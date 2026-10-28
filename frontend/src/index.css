@@ -1,0 +1,88 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --lc-bg-base: #070A08;
+    --lc-bg-subtle: #0C110E;
+    --lc-bg-surface: #111913;
+    --lc-bg-elevated: #162019;
+    --lc-bg-glass: rgba(12, 17, 14, 0.85);
+
+    --lc-border-subtle: #1D2A22;
+    --lc-border-default: #25352B;
+    --lc-border-active: #38FF8E;
+    --lc-border-highlight: rgba(56, 255, 142, 0.25);
+
+    --lc-text-primary: #F4F8F4;
+    --lc-text-body: #C0CAC2;
+    --lc-text-muted: #849188;
+    --lc-text-disabled: #4D5750;
+
+    --lc-mint: #38FF8E;
+    --lc-mint-subtle: rgba(56, 255, 142, 0.08);
+    --lc-mint-glow: rgba(56, 255, 142, 0.25);
+
+    --lc-cyan: #65F8FF;
+    --lc-cyan-subtle: rgba(101, 248, 255, 0.08);
+
+    --lc-magenta: #FF65D8;
+    --lc-magenta-subtle: rgba(255, 101, 216, 0.08);
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  body {
+    background-color: var(--lc-bg-base);
+    color: var(--lc-text-body);
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+
+  ::selection {
+    background-color: var(--lc-mint);
+    color: var(--lc-bg-base);
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--lc-bg-base);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--lc-border-default);
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--lc-border-highlight);
+  }
+}
+
+/* Subtle dot grid pattern */
+.bg-grid-pattern {
+  background-size: 32px 32px;
+  background-image:
+    linear-gradient(to right, rgba(29, 42, 34, 0.6) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(29, 42, 34, 0.6) 1px, transparent 1px);
+}
+
+.bg-radial-vignette {
+  background: radial-gradient(circle at 50% 20%, transparent 20%, #070A08 85%);
+}
+
+/* Accessibility: respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

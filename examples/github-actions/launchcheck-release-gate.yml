@@ -1,0 +1,39 @@
+name: LaunchCheck Release Gate
+
+on:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  launchcheck-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Run LaunchCheck Release Gate
+        env:
+          LAUNCHCHECK_API_URL: ${{ secrets.LAUNCHCHECK_API_URL }}
+          PROJECT_ID: ${{ secrets.LAUNCHCHECK_PROJECT_ID }}
+          CI_TOKEN: ${{ secrets.LAUNCHCHECK_CI_TOKEN }}
+        run: |
+          echo "Triggering LaunchCheck preflight release gate..."
+
+          RESPONSE=$(curl -s -X POST "$LAUNCHCHECK_API_URL/api/v1/projects/$PROJECT_ID/ci/audits" \
+            -H "X-CI-Token: $CI_TOKEN" \
+            -H "Content-Type: application/json")
+
+          echo "Response received."
+
+          # Extract decision using grep/sed or jq if available
+          DECISION=$(echo "$RESPONSE" | grep -o '"releaseDecision":"[^"]*"' | cut -d'"' -f4)
+
+          echo "Release Decision: $DECISION"
+
+          if [ "$DECISION" = "PROMOTE" ]; then
+            echo "Gate passed: Proceeding with deployment."
+            exit 0
+          else
+            echo "Gate blocked or audit failed. Halting deployment."
+            exit 1
+          fi
