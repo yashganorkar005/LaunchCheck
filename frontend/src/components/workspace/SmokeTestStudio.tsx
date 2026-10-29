@@ -12,6 +12,7 @@ export function SmokeTestStudio() {
   const [expectedStatus, setExpectedStatus] = useState(200);
   const [jsonPointer, setJsonPointer] = useState('/id');
   const [expectedValue, setExpectedValue] = useState('1');
+  const [bearerToken, setBearerToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SingleSmokeTestResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,10 +29,12 @@ export function SmokeTestStudio() {
         url,
         expectedStatus: Number(expectedStatus),
         jsonPointer: jsonPointer ? jsonPointer : undefined,
-        expectedJsonValue: expectedValue ? expectedValue : undefined
+        expectedJsonValue: expectedValue ? expectedValue : undefined,
+        bearerToken: bearerToken.trim() ? bearerToken.trim() : undefined
       };
       const token = localStorage.getItem('lc_token');
       const res = await api.smokeTests.run(payload, token);
+      setBearerToken('');
       setResult(res);
       window.dispatchEvent(new CustomEvent('launchcheck:audit-recorded'));
       if (res.success) {
@@ -40,6 +43,7 @@ export function SmokeTestStudio() {
         toast.error('Smoke test failed', res.errorMessage || res.diagnostic || `Expected HTTP ${res.expectedStatus}`);
       }
     } catch (err: any) {
+      setBearerToken('');
       const message = err instanceof ApiError ? err.message : (err.message || 'Smoke test execution failed.');
       setError(message);
       toast.error('Smoke test execution failed', message);
@@ -93,6 +97,15 @@ export function SmokeTestStudio() {
               icon={<FileCode2 className="w-4 h-4" />}
               monospace
               hint="e.g. /status or /data/active"
+            />
+            <Input
+              label="Target Bearer Token (Optional)"
+              type="password"
+              value={bearerToken}
+              onChange={(e) => setBearerToken(e.target.value)}
+              placeholder="Optional credential for the configured target"
+              hint="Used for this request only; never saved"
+              monospace
             />
             <Input
               label="Expected Value at JSON Pointer (Optional)"

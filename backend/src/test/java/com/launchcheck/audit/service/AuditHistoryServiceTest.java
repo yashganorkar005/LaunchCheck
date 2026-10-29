@@ -127,7 +127,7 @@ class AuditHistoryServiceTest {
     @Test
     void recordSmokeAudit_persistsCorrectRecord() {
         UUID userId = UUID.randomUUID();
-        SingleSmokeTestRequest req = new SingleSmokeTestRequest("Smoke", "https://api.com/status", 200, null, null);
+        SingleSmokeTestRequest req = new SingleSmokeTestRequest("Smoke", "https://api.com/status", 200, null, null, null);
         SingleSmokeTestResponse res = new SingleSmokeTestResponse(
                 true, "PASS", 200, 200, 80L, "Healthy", null, true, null
         );

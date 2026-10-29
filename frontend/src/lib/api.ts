@@ -144,6 +144,7 @@ export const api = {
       expectedStatus: number;
       jsonPointer?: string;
       expectedJsonValue?: string;
+      bearerToken?: string;
     }, token?: string | null) =>
       request<SingleSmokeTestResponse>('/api/v1/audits/smoke', {
         method: 'POST',

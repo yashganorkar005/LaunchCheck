@@ -10,6 +10,7 @@ public record SingleSmokeTestRequest(
         @NotNull(message = "Expected status is required")
         Integer expectedStatus,
         String jsonPointer,
-        String expectedJsonValue
+        String expectedJsonValue,
+        String bearerToken
 ) {
 }

@@ -88,7 +88,7 @@ public class AuditController {
         );
 
         long start = System.currentTimeMillis();
-        var results = smokeTestService.runTests(target, List.of(check));
+        var results = smokeTestService.runTests(target, List.of(check), request.bearerToken());
         long duration = System.currentTimeMillis() - start;
 
         SingleSmokeTestResponse response;

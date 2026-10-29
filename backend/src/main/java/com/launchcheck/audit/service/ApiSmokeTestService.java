@@ -23,13 +23,17 @@ public class ApiSmokeTestService {
     }
 
     public List<ApiSmokeTestResult> runTests(TargetUrl target, List<ApiCheck> checks) {
+        return runTests(target, checks, null);
+    }
+
+    public List<ApiSmokeTestResult> runTests(TargetUrl target, List<ApiCheck> checks, String bearerToken) {
         List<ApiSmokeTestResult> results = new ArrayList<>();
         if (checks == null) return results;
 
         // Enforce max 5 tests
         int limit = Math.min(checks.size(), 5);
         for (int i = 0; i < limit; i++) {
-            results.add(runSingleTest(target, checks.get(i)));
+            results.add(runSingleTest(target, checks.get(i), bearerToken));
         }
         return results;
     }
@@ -70,7 +74,7 @@ public class ApiSmokeTestService {
         return diagnostic.toString().trim();
     }
 
-    private ApiSmokeTestResult runSingleTest(TargetUrl target, ApiCheck check) {
+    private ApiSmokeTestResult runSingleTest(TargetUrl target, ApiCheck check, String bearerToken) {
         // Enforce method restriction
         String method = check.method().toUpperCase();
         if (!List.of("GET", "HEAD", "OPTIONS").contains(method)) {
@@ -101,7 +105,7 @@ public class ApiSmokeTestService {
             }
         }
 
-        HttpExchangeResult result = requester.execute(requestTarget, method, headers);
+        HttpExchangeResult result = requester.execute(requestTarget, method, headers, bearerToken);
 
         // If connection failed or httpStatus is 0, treat as transport failure FAIL rather than status mismatch
         if (!"PASS".equals(result.status()) && result.httpStatus() == 0) {
