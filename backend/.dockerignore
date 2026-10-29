@@ -1,0 +1,11 @@
+target/
+.git/
+.gitignore
+*.log
+*.env
+.env*
+.idea/
+.vscode/
+README.md
+docker-compose.yml
+nginx-staging.conf

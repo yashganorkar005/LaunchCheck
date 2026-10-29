@@ -15,6 +15,35 @@ export class ApiError extends Error {
   }
 }
 
+export function buildApiUrl(path: string, baseUrl?: string, isDevelopment = import.meta.env.DEV): string {
+  if (!path.startsWith('/')) {
+    throw new Error(`API path must start with '/': ${path}`);
+  }
+
+  const configuredBaseUrl = baseUrl?.trim();
+  if (!configuredBaseUrl) {
+    if (isDevelopment) {
+      return path;
+    }
+    throw new Error('VITE_API_BASE_URL is required for production builds. Set it to the deployed backend origin.');
+  }
+
+  let parsedBaseUrl: URL;
+  try {
+    parsedBaseUrl = new URL(configuredBaseUrl);
+  } catch {
+    throw new Error('VITE_API_BASE_URL must be an absolute http(s) URL.');
+  }
+
+  if (parsedBaseUrl.protocol !== 'http:' && parsedBaseUrl.protocol !== 'https:') {
+    throw new Error('VITE_API_BASE_URL must use http or https.');
+  }
+
+  const origin = parsedBaseUrl.origin;
+  const basePath = parsedBaseUrl.pathname.replace(/\/$/, '');
+  return `${origin}${basePath}${path}`;
+}
+
 async function request<T>(path: string, options: RequestInit = {}, token?: string | null): Promise<T> {
   const headers = new Headers(options.headers || {});
 
@@ -26,7 +55,7 @@ async function request<T>(path: string, options: RequestInit = {}, token?: strin
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(path, {
+  const response = await fetch(buildApiUrl(path, import.meta.env.VITE_API_BASE_URL), {
     ...options,
     headers
   });
