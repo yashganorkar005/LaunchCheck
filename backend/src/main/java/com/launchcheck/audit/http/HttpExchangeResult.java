@@ -10,6 +10,8 @@ public record HttpExchangeResult(
         String diagnostic,
         Map<String, List<String>> headers,
         String body,
+        String bodyExcerpt,
+        Map<String, String> diagnosticHeaders,
         HttpProbeResult.TlsDetails tls
 ) {
 }

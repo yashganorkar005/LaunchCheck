@@ -11,6 +11,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -68,6 +69,93 @@ class Phase2ServiceTest {
             CorsDiagnosticResult invalidPathResult = service.diagnose(target, "https://allowed.example.com", "api/data");
             assertEquals("FAIL", invalidPathResult.status());
             assertTrue(invalidPathResult.diagnostic().contains("relative path starting with '/'"));
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void githubSmokeTestSendsRequiredApiHeadersAndPassesAssertions() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
+        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
+            assertEquals("LaunchCheck/0.1", exchange.getRequestHeaders().getFirst("User-Agent"));
+            assertEquals("application/vnd.github+json", exchange.getRequestHeaders().getFirst("Accept"));
+            assertEquals("2022-11-28", exchange.getRequestHeaders().getFirst("X-GitHub-Api-Version"));
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            byte[] bytes = "{\"full_name\":\"octocat/Spoon-Knife\"}".getBytes();
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
+            ApiSmokeTestService service = new ApiSmokeTestService(policy);
+            ApiCheck check = new ApiCheck("/repos/octocat/Spoon-Knife", "GET", 200, List.of(), List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife")));
+
+            ApiSmokeTestResult result = service.runTests(new TargetUrl("http", "api.github.com", port, "/"), List.of(check)).get(0);
+
+            assertEquals("PASS", result.status());
+            assertTrue(result.jsonAssertionPassed());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void primaryRateLimit403IncludesSafeDiagnosticsAndSkipsJsonAssertion() throws Exception {
+        ApiSmokeTestResult result = runGithub403Fixture("{\"message\":\"API rate limit exceeded\",\"token\":\"secret-token\"}",
+                Map.of("X-RateLimit-Limit", "60", "X-RateLimit-Remaining", "0", "X-RateLimit-Reset", "1700000000"));
+
+        assertEquals(403, result.actualStatus());
+        assertEquals("FAIL", result.status());
+        assertFalse(result.jsonAssertionPassed());
+        assertTrue(result.jsonAssertionDiagnostic().contains("skipped"));
+        assertTrue(result.diagnostic().contains("rate limit"));
+        assertTrue(result.diagnostic().contains("X-RateLimit-Remaining=0"));
+        assertFalse(result.diagnostic().contains("secret-token"));
+    }
+
+    @Test
+    void secondaryRateLimit403IncludesRetryDiagnostics() throws Exception {
+        ApiSmokeTestResult result = runGithub403Fixture("{\"message\":\"You have exceeded a secondary rate limit.\"}",
+                Map.of("Retry-After", "30", "X-GitHub-Request-Id", "req-123"));
+
+        assertEquals(403, result.actualStatus());
+        assertTrue(result.diagnostic().contains("secondary rate limit"));
+        assertTrue(result.diagnostic().contains("Retry-After=30"));
+        assertTrue(result.diagnostic().contains("X-GitHub-Request-Id=req-123"));
+    }
+
+    @Test
+    void ordinary403RetainsHttpFailureWithoutRateLimitClassification() throws Exception {
+        ApiSmokeTestResult result = runGithub403Fixture("{\"message\":\"Resource forbidden\"}", Map.of());
+
+        assertEquals(403, result.actualStatus());
+        assertTrue(result.diagnostic().contains("HTTP response 403"));
+        assertFalse(result.diagnostic().contains("rate limit"));
+        assertTrue(result.jsonAssertionDiagnostic().contains("skipped"));
+    }
+
+    private ApiSmokeTestResult runGithub403Fixture(String body, Map<String, String> responseHeaders) throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
+        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
+            responseHeaders.forEach((name, value) -> exchange.getResponseHeaders().set(name, value));
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            byte[] bytes = body.getBytes();
+            exchange.sendResponseHeaders(403, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+        try {
+            int port = server.getAddress().getPort();
+            UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
+            ApiSmokeTestService service = new ApiSmokeTestService(policy);
+            ApiCheck check = new ApiCheck("/repos/octocat/Spoon-Knife", "GET", 200, List.of(), List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife")));
+            return service.runTests(new TargetUrl("http", "api.github.com", port, "/"), List.of(check)).get(0);
         } finally {
             server.stop(0);
         }

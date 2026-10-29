@@ -13,7 +13,6 @@ import com.launchcheck.audit.safety.UrlSafetyPolicy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 public class ApiSmokeTestService {
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -33,6 +32,42 @@ public class ApiSmokeTestService {
             results.add(runSingleTest(target, checks.get(i)));
         }
         return results;
+    }
+
+    private static String formatDiagnosticHeaderName(String name) {
+        return switch (name.toLowerCase(java.util.Locale.ROOT)) {
+            case "x-ratelimit-limit" -> "X-RateLimit-Limit";
+            case "x-ratelimit-remaining" -> "X-RateLimit-Remaining";
+            case "x-ratelimit-reset" -> "X-RateLimit-Reset";
+            case "retry-after" -> "Retry-After";
+            case "x-github-request-id" -> "X-GitHub-Request-Id";
+            default -> name;
+        };
+    }
+
+    private String buildHttpFailureDiagnostic(HttpExchangeResult result) {
+        String body = result.bodyExcerpt() == null ? "" : result.bodyExcerpt();
+        String lowerBody = body.toLowerCase(java.util.Locale.ROOT);
+        boolean secondaryRateLimit = lowerBody.contains("secondary rate limit") || result.diagnosticHeaders().containsKey("retry-after");
+        boolean primaryRateLimit = "0".equals(result.diagnosticHeaders().get("x-ratelimit-remaining"))
+                || lowerBody.contains("api rate limit exceeded");
+
+        StringBuilder diagnostic = new StringBuilder("Status mismatch: expected HTTP response ").append(result.httpStatus());
+        if (primaryRateLimit) {
+            diagnostic.append(" primary rate limit response");
+        } else if (secondaryRateLimit) {
+            diagnostic.append(" secondary rate limit response");
+        } else {
+            diagnostic.append(" response");
+        }
+        if (!body.isBlank()) {
+            diagnostic.append("; body: ").append(body);
+        }
+        if (!result.diagnosticHeaders().isEmpty()) {
+            diagnostic.append("; diagnostics: ");
+            result.diagnosticHeaders().forEach((name, value) -> diagnostic.append(formatDiagnosticHeaderName(name)).append('=').append(value).append(' '));
+        }
+        return diagnostic.toString().trim();
     }
 
     private ApiSmokeTestResult runSingleTest(TargetUrl target, ApiCheck check) {
@@ -56,14 +91,14 @@ public class ApiSmokeTestService {
         String normalizedBasePath = basePath.endsWith("/") ? basePath.substring(0, basePath.length() - 1) : basePath;
         String requestPath = (normalizedBasePath.isEmpty() ? "" : normalizedBasePath) + check.path();
         TargetUrl requestTarget = new TargetUrl(target.scheme(), target.host(), target.port(), requestPath);
-        Map<String, String> headerMap = check.headerAssertions() != null ?
-                check.headerAssertions().stream().filter(a -> a.name() != null && !a.name().isEmpty()).collect(Collectors.toMap(a -> a.name(), a -> a.value() == null ? "" : a.value(), (v1, v2) -> v1)) :
-                Map.of();
-
         List<String> headers = new ArrayList<>();
-        for (Map.Entry<String, String> entry : headerMap.entrySet()) {
-            headers.add(entry.getKey());
-            headers.add(entry.getValue());
+        if (check.headerAssertions() != null) {
+            for (HeaderAssertion assertion : check.headerAssertions()) {
+                if (assertion.name() != null && !assertion.name().isEmpty()) {
+                    headers.add(assertion.name());
+                    headers.add(assertion.value() == null ? "" : assertion.value());
+                }
+            }
         }
 
         HttpExchangeResult result = requester.execute(requestTarget, method, headers);
@@ -84,6 +119,14 @@ public class ApiSmokeTestService {
         }
 
         boolean statusMatch = check.expectedStatus() == null || check.expectedStatus().equals(result.httpStatus());
+        if (!statusMatch) {
+            String diagnostic = buildHttpFailureDiagnostic(result);
+            return new ApiSmokeTestResult(
+                    check.path(), method, check.expectedStatus(), result.httpStatus(), "FAIL", diagnostic,
+                    "Review the HTTP response and any rate-limit diagnostics",
+                    false, "JSON assertion skipped because the HTTP status did not match"
+            );
+        }
 
         // Evaluate Header Assertions
         boolean headerPass = true;

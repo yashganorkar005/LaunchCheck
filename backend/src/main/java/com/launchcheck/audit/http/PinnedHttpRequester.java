@@ -30,6 +30,10 @@ public class PinnedHttpRequester {
     private static final long DEFAULT_CONNECT_TIMEOUT_MS = 3_000;
     private static final long DEFAULT_READ_TIMEOUT_MS = 3_000;
     private static final long DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024;
+    private static final int MAX_DIAGNOSTIC_BODY_CHARS = 1024;
+    private static final List<String> DIAGNOSTIC_HEADERS = List.of(
+            "x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset", "retry-after", "x-github-request-id"
+    );
 
     private final UrlSafetyPolicy policy;
 
@@ -40,7 +44,7 @@ public class PinnedHttpRequester {
     public HttpExchangeResult execute(TargetUrl target, String method, List<String> headers) {
         List<InetAddress> addresses = policy.resolveAndValidate(target);
         if (addresses.isEmpty()) {
-            return new HttpExchangeResult("FAIL", 0, 0, "No safe addresses resolved", Map.of(), null, null);
+            return new HttpExchangeResult("FAIL", 0, 0, "No safe addresses resolved", Map.of(), null, null, Map.of(), null);
         }
 
         long startMs = System.currentTimeMillis();
@@ -61,7 +65,7 @@ public class PinnedHttpRequester {
 
         long duration = System.currentTimeMillis() - startMs;
         String errMessage = lastException != null ? sanitizeException(lastException) : "All candidate addresses failed";
-        return new HttpExchangeResult("FAIL", duration, 0, "Connection failed across candidate addresses: " + errMessage, Map.of(), null, null);
+        return new HttpExchangeResult("FAIL", duration, 0, "Connection failed across candidate addresses: " + errMessage, Map.of(), null, null, Map.of(), null);
     }
 
     private HttpExchangeResult executeWithAddress(TargetUrl target, InetAddress pinnedAddress, String method, List<String> headers, long startMs) {
@@ -98,10 +102,11 @@ public class PinnedHttpRequester {
             if (headers != null) {
                 for (int i = 0; i < headers.size(); i += 2) {
                     if (i + 1 < headers.size()) {
-                        request.addHeader(headers.get(i), headers.get(i + 1));
+                        request.setHeader(headers.get(i), headers.get(i + 1));
                     }
                 }
             }
+            addDefaultHeaders(request, target);
 
             return client.execute(httpHost, request, response -> {
                 long duration = System.currentTimeMillis() - startMs;
@@ -118,6 +123,17 @@ public class PinnedHttpRequester {
                     body = EntityUtils.toString(entity, "UTF-8");
                     consumeEntityUpTo(entity, DEFAULT_MAX_RESPONSE_BYTES);
                 }
+                String diagnosticBody = body == null ? "" : body.substring(0, Math.min(body.length(), MAX_DIAGNOSTIC_BODY_CHARS));
+
+                Map<String, String> diagnosticHeaders = new java.util.LinkedHashMap<>();
+                for (String diagnosticHeader : DIAGNOSTIC_HEADERS) {
+                    for (Header header : response.getHeaders()) {
+                        if (diagnosticHeader.equalsIgnoreCase(header.getName()) && header.getValue() != null) {
+                            diagnosticHeaders.put(diagnosticHeader, sanitizeDiagnosticValue(header.getValue()));
+                            break;
+                        }
+                    }
+                }
 
                 return new HttpExchangeResult(
                         code >= 200 && code < 400 ? "PASS" : "WARN",
@@ -126,13 +142,30 @@ public class PinnedHttpRequester {
                         "Responded with HTTP " + code,
                         responseHeaders,
                         body,
+                        sanitizeDiagnosticValue(diagnosticBody),
+                        Map.copyOf(diagnosticHeaders),
                         null
                 );
             });
         } catch (IOException e) {
             long duration = System.currentTimeMillis() - startMs;
-            return new HttpExchangeResult("FAIL", duration, 0, "Connection failed: " + sanitizeException(e), Map.of(), null, null);
+            return new HttpExchangeResult("FAIL", duration, 0, "Connection failed: " + sanitizeException(e), Map.of(), null, null, Map.of(), null);
         }
+    }
+
+    private static void addDefaultHeaders(HttpUriRequestBase request, TargetUrl target) {
+        request.setHeader("User-Agent", "LaunchCheck/0.1");
+        if ("api.github.com".equalsIgnoreCase(target.host())) {
+            request.setHeader("Accept", "application/vnd.github+json");
+            request.setHeader("X-GitHub-Api-Version", "2022-11-28");
+        }
+    }
+
+    private static String sanitizeDiagnosticValue(String value) {
+        return value.replaceAll("[\\r\\n]", " ")
+                .replaceAll("(?i)(bearer\\s+)[^\\s]+", "$1[REDACTED]")
+                .replaceAll("(?i)(\\\"(?:token|access_token|authorization|cookie|password|secret)\\\"\\s*:\\s*\\\")[^\\\"]*(\\\")", "$1[REDACTED]$2")
+                .trim();
     }
 
     private HttpUriRequestBase createRequest(String method, String path) {
