@@ -22,6 +22,7 @@ export function AuditStudio({
 }: AuditStudioProps) {
   const [frontendUrl, setFrontendUrl] = useState(initialFrontend);
   const [backendUrl, setBackendUrl] = useState(initialBackend);
+  const [bearerToken, setBearerToken] = useState('');
 
   React.useEffect(() => {
     if (selectedProject) {
@@ -82,19 +83,23 @@ export function AuditStudio({
 
       let result: AuditResponse;
       const token = localStorage.getItem('lc_token');
+      const targetBearerToken = bearerToken.trim() || undefined;
       if (selectedProject) {
         result = await api.audits.runForProject(
           selectedProject.id,
           apiChecks,
-          token || ''
+          token || '',
+          targetBearerToken
         );
       } else {
         result = await api.audits.runPublic({
           frontendUrl,
           backendUrl,
-          apiChecks
+          apiChecks,
+          bearerToken: targetBearerToken
         }, token);
       }
+      setBearerToken('');
       window.dispatchEvent(new CustomEvent('launchcheck:audit-recorded'));
 
       if (result.overallStatus === 'PASS') {
@@ -107,6 +112,7 @@ export function AuditStudio({
 
       onAuditComplete(result);
     } catch (err: any) {
+      setBearerToken('');
       const message = err instanceof ApiError ? err.message : (err.message || 'Audit execution failed. Please check target connectivity.');
       setError(message);
       toast.error('Audit execution error', message);
@@ -148,6 +154,16 @@ export function AuditStudio({
                 icon={<Globe className="w-4 h-4" />}
                 monospace
                 hint="Validates URI syntax, HTTP/HTTPS protocols, and standard ports."
+              />
+
+              <Input
+                label="GitHub API Bearer Token (Optional)"
+                type="password"
+                value={bearerToken}
+                onChange={(e) => setBearerToken(e.target.value)}
+                placeholder="Used only for api.github.com"
+                hint="Sent only with this audit request and never saved"
+                monospace
               />
 
               <Input

@@ -167,7 +167,7 @@ public class PinnedHttpRequester {
     }
 
     private static void addScopedBearerHeader(HttpUriRequestBase request, TargetUrl target, String bearerToken) {
-        if (bearerToken != null && !bearerToken.isBlank()) {
+        if (bearerToken != null && !bearerToken.isBlank() && "api.github.com".equalsIgnoreCase(target.host())) {
             request.setHeader("Authorization", "Bearer " + bearerToken.trim());
         }
     }

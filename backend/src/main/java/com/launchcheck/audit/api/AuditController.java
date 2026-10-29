@@ -50,7 +50,8 @@ public class AuditController {
                 clientIp,
                 request.frontendUrl(),
                 request.backendUrl(),
-                request.apiChecks()
+                request.apiChecks(),
+                request.bearerToken()
         );
 
         if (userId != null) {

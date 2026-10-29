@@ -32,6 +32,10 @@ public class AuditExecutionService {
     }
 
     public AuditResponse executeAudit(String frontendUrlStr, String backendUrlStr, List<AuditRequest.ApiCheck> apiChecks) {
+        return executeAudit(frontendUrlStr, backendUrlStr, apiChecks, null);
+    }
+
+    public AuditResponse executeAudit(String frontendUrlStr, String backendUrlStr, List<AuditRequest.ApiCheck> apiChecks, String bearerToken) {
         Instant start = Instant.now();
         TargetUrl frontend = policy.parseAndValidate(frontendUrlStr);
         TargetUrl backend = policy.parseAndValidate(backendUrlStr);
@@ -41,7 +45,7 @@ public class AuditExecutionService {
 
         List<ApiSmokeTestResult> apiTestResults = null;
         if (apiChecks != null && !apiChecks.isEmpty()) {
-            apiTestResults = smokeTestService.runTests(backend, apiChecks);
+            apiTestResults = smokeTestService.runTests(backend, apiChecks, bearerToken);
         }
 
         Instant end = Instant.now();

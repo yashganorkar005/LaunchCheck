@@ -58,7 +58,7 @@ public class ApiSmokeTestService {
 
         StringBuilder diagnostic = new StringBuilder("Status mismatch: expected HTTP response ").append(result.httpStatus());
         if (primaryRateLimit) {
-            diagnostic.append(" primary rate limit response");
+            diagnostic.append(" primary rate limit response; authenticate with a user-supplied token to use authenticated quota");
         } else if (secondaryRateLimit) {
             diagnostic.append(" secondary rate limit response");
         } else {

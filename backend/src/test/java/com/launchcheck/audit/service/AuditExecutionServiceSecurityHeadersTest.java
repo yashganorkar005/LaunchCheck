@@ -3,10 +3,14 @@ package com.launchcheck.audit.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.launchcheck.audit.api.AuditResponse;
+import com.launchcheck.audit.api.AuditRequest;
 import com.launchcheck.audit.http.HttpProbeResult;
 import com.launchcheck.audit.http.PinnedHttpProbe;
 import com.launchcheck.audit.safety.TargetUrl;
 import com.launchcheck.audit.safety.UrlSafetyPolicy;
+import com.sun.net.httpserver.HttpServer;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -18,6 +22,94 @@ import static org.mockito.Mockito.when;
 
 class AuditExecutionServiceSecurityHeadersTest {
     private static final TargetUrl TARGET = new TargetUrl("https", "example.com", 443, "/");
+
+    @Test
+    void mainAuditFlowSendsBearerTokenThroughToGithubSmokeRequest() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
+        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
+            assertEquals("Bearer ghp-audit-token", exchange.getRequestHeaders().getFirst("Authorization"));
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            byte[] body = "{\"full_name\":\"octocat/Spoon-Knife\"}".getBytes();
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            UrlSafetyPolicy smokePolicy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
+            UrlSafetyPolicy parsePolicy = mock(UrlSafetyPolicy.class);
+            PinnedHttpProbe probe = mock(PinnedHttpProbe.class);
+            when(parsePolicy.parseAndValidate("https://github.com")).thenReturn(new TargetUrl("http", "github.com", port, "/"));
+            when(parsePolicy.parseAndValidate("https://api.github.com")).thenReturn(new TargetUrl("http", "api.github.com", port, "/"));
+            when(probe.check(any(TargetUrl.class))).thenReturn(new HttpProbeResult(
+                    "PASS", 1, 200, "Responded with HTTP 200",
+                    new HttpProbeResult.TlsDetails("SKIPPED", null, "HTTP fixture")
+            ));
+
+            ApiSmokeTestService smokeService = new ApiSmokeTestService(smokePolicy);
+            AuditResponse response = new AuditExecutionService(parsePolicy, probe, smokeService).executeAudit(
+                    "https://github.com",
+                    "https://api.github.com",
+                    List.of(new AuditRequest.ApiCheck(
+                            "/repos/octocat/Spoon-Knife", "GET", 200, List.of(),
+                            List.of(new AuditRequest.JsonAssertion("/full_name", "octocat/Spoon-Knife"))
+                    )),
+                    "ghp-audit-token"
+            );
+
+            assertEquals("PASS", response.apiTests().get(0).status());
+            assertEquals(200, response.apiTests().get(0).actualStatus());
+            assertTrue(response.apiTests().get(0).jsonAssertionPassed());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void mainAuditFlowWithoutTokenRetainsPrimaryRateLimitFailure() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
+        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
+            assertEquals(null, exchange.getRequestHeaders().getFirst("Authorization"));
+            exchange.getResponseHeaders().set("X-RateLimit-Remaining", "0");
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            byte[] body = "{\"message\":\"API rate limit exceeded\"}".getBytes();
+            exchange.sendResponseHeaders(403, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            UrlSafetyPolicy smokePolicy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
+            UrlSafetyPolicy parsePolicy = mock(UrlSafetyPolicy.class);
+            PinnedHttpProbe probe = mock(PinnedHttpProbe.class);
+            when(parsePolicy.parseAndValidate("https://github.com")).thenReturn(new TargetUrl("http", "github.com", port, "/"));
+            when(parsePolicy.parseAndValidate("https://api.github.com")).thenReturn(new TargetUrl("http", "api.github.com", port, "/"));
+            when(probe.check(any(TargetUrl.class))).thenReturn(new HttpProbeResult(
+                    "PASS", 1, 200, "Responded with HTTP 200",
+                    new HttpProbeResult.TlsDetails("SKIPPED", null, "HTTP fixture")
+            ));
+
+            ApiSmokeTestService smokeService = new ApiSmokeTestService(smokePolicy);
+            AuditResponse response = new AuditExecutionService(parsePolicy, probe, smokeService).executeAudit(
+                    "https://github.com",
+                    "https://api.github.com",
+                    List.of(new AuditRequest.ApiCheck(
+                            "/repos/octocat/Spoon-Knife", "GET", 200, List.of(),
+                            List.of(new AuditRequest.JsonAssertion("/full_name", "octocat/Spoon-Knife"))
+                    ))
+            );
+
+            assertEquals("FAIL", response.apiTests().get(0).status());
+            assertTrue(response.apiTests().get(0).diagnostic().contains("primary rate limit"));
+            assertTrue(response.apiTests().get(0).jsonAssertionDiagnostic().contains("skipped"));
+        } finally {
+            server.stop(0);
+        }
+    }
 
     @Test
     void propagatesPresentAndMissingSecurityHeaderAssessmentsToAuditResponse() {

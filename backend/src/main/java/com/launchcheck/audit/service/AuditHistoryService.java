@@ -94,7 +94,8 @@ public class AuditHistoryService {
                 clientIp != null ? clientIp : "unknown",
                 frontendUrl,
                 backendUrl,
-                request != null ? request.apiChecks() : null
+                request != null ? request.apiChecks() : null,
+                request != null ? request.bearerToken() : null
         );
 
         recordPreflightAudit(userId, projectId, project.getName(), response);

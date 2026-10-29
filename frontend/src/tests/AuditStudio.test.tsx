@@ -48,12 +48,16 @@ describe('AuditStudio demo configuration', () => {
     expect(screen.getByDisplayValue('octocat/Spoon-Knife')).toBeInTheDocument();
     expect(screen.getByDisplayValue('content-type')).toBeInTheDocument();
 
+    fireEvent.change(screen.getByLabelText('GitHub API Bearer Token (Optional)'), {
+      target: { value: 'ghp-audit-studio-token' }
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Execute Preflight Audit' }));
 
     await waitFor(() => expect(runPublic).toHaveBeenCalledOnce());
     expect(runPublic.mock.calls[0][0]).toEqual({
       frontendUrl: 'https://github.com',
       backendUrl: 'https://api.github.com',
+      bearerToken: 'ghp-audit-studio-token',
       apiChecks: [{
         path: '/repos/octocat/Spoon-Knife',
         method: 'GET',
@@ -62,6 +66,8 @@ describe('AuditStudio demo configuration', () => {
         jsonAssertions: [{ jsonPointer: '/full_name', expectedValue: 'octocat/Spoon-Knife' }]
       }]
     });
+    await waitFor(() => expect(screen.getByLabelText('GitHub API Bearer Token (Optional)')).toHaveValue(''));
+    expect(JSON.stringify(runPublic.mock.calls)).not.toContain('Authorization');
   });
 
   it('preserves saved project targets instead of applying demo defaults', () => {
