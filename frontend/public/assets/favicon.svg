@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title>LaunchCheck</title>
+  <rect width="1024" height="1024" rx="224" fill="#1D1D20"/>
+  <path d="M520 286a260 260 0 1 0 190 208" fill="none" stroke="#F8F8F8" stroke-width="54" stroke-linecap="round"/>
+  <path d="m338 516 112 124 334-376" fill="none" stroke="#38FF8E" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
