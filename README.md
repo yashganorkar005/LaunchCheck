@@ -38,32 +38,39 @@ LaunchCheck turns those checks into a repeatable audit response with per-check `
 
 ## Screenshots
 
-No repository screenshots were available in the inspected worktree, and no browser screenshot driver was installed in the verification environment. The README therefore does not include fabricated UI images.
+These screenshots were captured from the local LaunchCheck application at a consistent 1440×1000 viewport. They show the actual product UI and real diagnostic workflows against the public GitHub and JSONPlaceholder endpoints; no mockups or fabricated results are used.
 
-The real application includes these views, which can be captured later from a running instance:
+### Product surface
 
-- Preflight Audit configuration with the GitHub demo defaults.
-- Completed audit results with TLS expiry and security-header assessments.
-- CORS diagnostics.
-- API smoke-test results and JSON Pointer assertions.
-- Project-scoped history.
-- PDF and JSON report downloads.
-- CI integration documentation and release-gate output.
+![LaunchCheck dashboard](docs/screenshots/dashboard.png)
 
-### Manual capture checklist
+The marketing dashboard presents the deployment preflight workflow, security posture, and supported diagnostics.
 
-To create genuine screenshots locally, start the backend and frontend using the commands in [Local development](#local-development), then:
+![Preflight Audit form](docs/screenshots/preflight-form.png)
 
-1. Open `http://127.0.0.1:5174/` and capture the marketing page or workspace shell.
-2. Open **Run Preflight**, confirm the GitHub defaults, and capture the audit form.
-3. Run the audit, wait for the result, and capture the targets, TLS expiry, and security-header sections.
-4. Open **CORS Diagnostics**, run a permitted test target, and capture the result.
-5. Open **API Smoke Tests**, run the repository check, and capture its status and JSON Pointer assertion.
-6. Sign in, open **Audit History**, and capture the selected history record.
-7. Use **Download Full Report**, open the resulting PDF, and capture a page showing the report title and diagnostic sections.
-8. Save the images under `docs/screenshots/` with descriptive names, then replace this section with the verified relative image links.
+The Preflight Audit form is prefilled with the verified GitHub demo targets and a repository smoke test with a JSON Pointer assertion.
 
-These steps are intentionally instructions rather than screenshot claims because no browser screenshot tool was available in the inspected environment.
+![Completed Preflight Audit](docs/screenshots/preflight-results.png)
+
+A real completed audit showing reachability, HTTP status, TLS certificate expiry, and security-header assessments.
+
+### Diagnostic workspaces
+
+![CORS diagnostics](docs/screenshots/cors-results.png)
+
+The CORS workspace reports the actual preflight result and returned `Access-Control-Allow-*` headers.
+
+![API smoke-test results](docs/screenshots/smoke-results.png)
+
+The API smoke-test workspace shows a real HTTP 200 response and a passing RFC 6901 JSON Pointer assertion.
+
+![Audit history access control](docs/screenshots/audit-history.png)
+
+Audit History is intentionally protected behind operator authentication; this captured state demonstrates the access-control boundary rather than an unauthenticated history claim.
+
+![Rendered PDF audit report](docs/screenshots/pdf-report.png)
+
+The report download was generated from the completed audit result and opened in Chrome's PDF viewer. The rendered capture shows the real paginated report, including audit metadata, target status, TLS telemetry, and security-header details.
 
 ## Capabilities
 
