@@ -47,8 +47,15 @@ public class ApiSmokeTestService {
             return new ApiSmokeTestResult(check.path(), method, check.expectedStatus(), null, "FAIL", "Invalid path", "Path must start with '/'", true, null);
         }
 
-        // Construct request
-        TargetUrl requestTarget = new TargetUrl(target.scheme(), target.host(), target.port(), check.path());
+        // Construct request from the configured backend target and relative check path.
+        String basePath = target.path() == null || target.path().isBlank() ? "/" : target.path();
+        int queryIndex = basePath.indexOf('?');
+        if (queryIndex >= 0) {
+            basePath = basePath.substring(0, queryIndex);
+        }
+        String normalizedBasePath = basePath.endsWith("/") ? basePath.substring(0, basePath.length() - 1) : basePath;
+        String requestPath = (normalizedBasePath.isEmpty() ? "" : normalizedBasePath) + check.path();
+        TargetUrl requestTarget = new TargetUrl(target.scheme(), target.host(), target.port(), requestPath);
         Map<String, String> headerMap = check.headerAssertions() != null ?
                 check.headerAssertions().stream().filter(a -> a.name() != null && !a.name().isEmpty()).collect(Collectors.toMap(a -> a.name(), a -> a.value() == null ? "" : a.value(), (v1, v2) -> v1)) :
                 Map.of();

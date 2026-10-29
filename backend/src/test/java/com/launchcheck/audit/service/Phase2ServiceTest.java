@@ -74,6 +74,41 @@ class Phase2ServiceTest {
     }
 
     @Test
+    void apiSmokeTestUsesBackendBasePathWhenCombiningRelativeCheckPath() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
+        server.createContext("/api/repos/octocat/Spoon-Knife", exchange -> {
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            byte[] bytes = "{\"full_name\":\"octocat/Spoon-Knife\"}".getBytes();
+            exchange.sendResponseHeaders(200, bytes.length);
+            exchange.getResponseBody().write(bytes);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
+            ApiSmokeTestService service = new ApiSmokeTestService(policy);
+            TargetUrl backendTarget = new TargetUrl("http", "localhost", port, "/api");
+            ApiCheck githubStyleCheck = new ApiCheck(
+                    "/repos/octocat/Spoon-Knife",
+                    "GET",
+                    200,
+                    List.of(),
+                    List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife"))
+            );
+
+            ApiSmokeTestResult result = service.runTests(backendTarget, List.of(githubStyleCheck)).get(0);
+
+            assertEquals("PASS", result.status());
+            assertEquals(200, result.actualStatus());
+            assertTrue(result.jsonAssertionPassed());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void apiSmokeTestServiceEnforcesLimitsAndAssertions() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
         server.createContext("/health", exchange -> {
