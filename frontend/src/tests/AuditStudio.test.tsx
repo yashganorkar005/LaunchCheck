@@ -44,8 +44,8 @@ describe('AuditStudio demo configuration', () => {
     expect(screen.getByDisplayValue('Read Sample Post')).toBeInTheDocument();
     expect(screen.getByDisplayValue('/posts/1')).toBeInTheDocument();
     expect(screen.getByDisplayValue('200')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('/title')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('sunt aut facere repellat provident occaecati excepturi optio reprehenderit')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('/id')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('1')).toBeInTheDocument();
     expect(screen.getByDisplayValue('content-type')).toBeInTheDocument();
     expect(screen.getByDisplayValue('application/json')).toBeInTheDocument();
     expect(screen.getByLabelText('Smoke test 1 header match condition')).toHaveValue('contains');
@@ -69,10 +69,29 @@ describe('AuditStudio demo configuration', () => {
         path: '/posts/1',
         method: 'GET',
         expectedStatus: 200,
-        headerAssertions: [{ name: 'content-type', value: 'application/json' }],
-        jsonAssertions: [{ jsonPointer: '/title', expectedValue: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit' }]
+        headerAssertions: [{ name: 'content-type', condition: 'contains', value: 'application/json' }],
+        jsonAssertions: [{ jsonPointer: '/id', expectedValue: '1' }]
       }]
     });
+  });
+
+  it('updates and preserves independent header match conditions across checks', async () => {
+    renderStudio();
+
+    fireEvent.change(screen.getByLabelText('Smoke test 1 header match condition'), { target: { value: 'equals' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add Check' }));
+    fireEvent.change(screen.getByLabelText('Smoke test 2 header match condition'), { target: { value: 'endsWith' } });
+    fireEvent.change(screen.getByLabelText('Smoke test 1 name'), { target: { value: 'First check' } });
+
+    expect(screen.getByLabelText('Smoke test 1 header match condition')).toHaveValue('equals');
+    expect(screen.getByLabelText('Smoke test 2 header match condition')).toHaveValue('endsWith');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove smoke test 2' }));
+    expect(screen.getByLabelText('Smoke test 1 header match condition')).toHaveValue('equals');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Execute Preflight Audit' }));
+    await waitFor(() => expect(runPublic).toHaveBeenCalledOnce());
+    expect(runPublic.mock.calls[0][0].apiChecks[0].headerAssertions[0].condition).toBe('equals');
   });
 
   it('preserves saved project targets instead of applying demo defaults', () => {

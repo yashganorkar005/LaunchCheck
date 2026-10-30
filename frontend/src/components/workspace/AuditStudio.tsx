@@ -4,7 +4,7 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Badge } from '../ui/Badge';
 import { useToast } from '../ui/Toast';
-import { AuditResponse, Project } from '../../types';
+import { AuditResponse, HeaderMatchCondition, Project } from '../../types';
 import { api, ApiError } from '../../lib/api';
 
 interface AuditStudioProps {
@@ -33,15 +33,15 @@ export function AuditStudio({
     name: string;
     path: string;
     expectedStatus: number;
-    headerAssertions: { name: string; value: string }[];
+    headerAssertions: { name: string; value: string; condition: HeaderMatchCondition }[];
     jsonAssertions: { jsonPointer: string; expectedValue: string }[];
   }>>([
     {
       name: 'Read Sample Post',
       path: '/posts/1',
       expectedStatus: 200,
-      headerAssertions: [{ name: 'content-type', value: 'application/json' }],
-      jsonAssertions: [{ jsonPointer: '/title', expectedValue: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit' }]
+      headerAssertions: [{ name: 'content-type', condition: 'contains', value: 'application/json' }],
+      jsonAssertions: [{ jsonPointer: '/id', expectedValue: '1' }]
     }
   ]);
   const [loading, setLoading] = useState(false);
@@ -251,7 +251,7 @@ export function AuditStudio({
                         value={st.headerAssertions[0]?.name || ''}
                         onChange={(e) => {
                           const updated = [...smokeTests];
-                          const assertion = updated[idx].headerAssertions[0] || { name: '', value: '' };
+                          const assertion = updated[idx].headerAssertions[0] || { name: '', value: '', condition: 'contains' as HeaderMatchCondition };
                           updated[idx].headerAssertions = [{ ...assertion, name: e.target.value }];
                           setSmokeTests(updated);
                         }}
@@ -265,11 +265,19 @@ export function AuditStudio({
                       <select
                         id={`smoke-header-condition-${idx}`}
                         aria-label={`Smoke test ${idx + 1} header match condition`}
-                        value="contains"
-                        disabled
-                        className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] opacity-80"
+                        value={st.headerAssertions[0]?.condition || 'contains'}
+                        onChange={(e) => {
+                          const updated = [...smokeTests];
+                          const assertion = updated[idx].headerAssertions[0] || { name: '', value: '', condition: 'contains' as HeaderMatchCondition };
+                          updated[idx].headerAssertions = [{ ...assertion, condition: e.target.value as HeaderMatchCondition }];
+                          setSmokeTests(updated);
+                        }}
+                        className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
                       >
                         <option value="contains">Contains</option>
+                        <option value="equals">Equals</option>
+                        <option value="startsWith">Starts with</option>
+                        <option value="endsWith">Ends with</option>
                       </select>
                       <p className="text-[11px] leading-relaxed text-[#849188]">Choose how LaunchCheck should compare the actual response header with your expected value.</p>
                     </div>
@@ -282,7 +290,7 @@ export function AuditStudio({
                         value={st.headerAssertions[0]?.value || ''}
                         onChange={(e) => {
                           const updated = [...smokeTests];
-                          const assertion = updated[idx].headerAssertions[0] || { name: '', value: '' };
+                          const assertion = updated[idx].headerAssertions[0] || { name: '', value: '', condition: 'contains' as HeaderMatchCondition };
                           updated[idx].headerAssertions = [{ ...assertion, value: e.target.value }];
                           setSmokeTests(updated);
                         }}

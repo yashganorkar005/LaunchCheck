@@ -17,9 +17,12 @@ export interface Project {
   createdAt: string;
 }
 
+export type HeaderMatchCondition = 'contains' | 'equals' | 'startsWith' | 'endsWith';
+
 export interface HeaderAssertion {
   name: string;
   value: string;
+  condition: HeaderMatchCondition;
 }
 
 export interface JsonAssertion {

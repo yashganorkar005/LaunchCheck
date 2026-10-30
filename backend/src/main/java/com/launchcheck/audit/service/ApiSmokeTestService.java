@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.launchcheck.audit.api.ApiSmokeTestResult;
 import com.launchcheck.audit.api.AuditRequest.ApiCheck;
 import com.launchcheck.audit.api.AuditRequest.HeaderAssertion;
+import com.launchcheck.audit.api.AuditRequest.HeaderMatchCondition;
 import com.launchcheck.audit.api.AuditRequest.JsonAssertion;
 import com.launchcheck.audit.http.HttpExchangeResult;
 import com.launchcheck.audit.http.PinnedHttpRequester;
@@ -32,6 +33,21 @@ public class ApiSmokeTestService {
             results.add(runSingleTest(target, checks.get(i)));
         }
         return results;
+    }
+
+    /**
+     * Header names are matched case-insensitively during lookup; header values use case-sensitive String comparisons.
+     */
+    private static boolean matchesHeaderValue(String actual, String expected, HeaderMatchCondition condition) {
+        if (actual == null) return false;
+        String safeExpected = expected == null ? "" : expected;
+        HeaderMatchCondition safeCondition = condition == null ? HeaderMatchCondition.CONTAINS : condition;
+        return switch (safeCondition) {
+            case CONTAINS -> actual.contains(safeExpected);
+            case EQUALS -> actual.equals(safeExpected);
+            case STARTS_WITH -> actual.startsWith(safeExpected);
+            case ENDS_WITH -> actual.endsWith(safeExpected);
+        };
     }
 
     private static String formatDiagnosticHeaderName(String name) {
@@ -153,9 +169,10 @@ public class ApiSmokeTestService {
                     break;
                 }
                 if (ha.value() != null && !ha.value().isEmpty()) {
-                    if (matchedVal == null || !matchedVal.contains(ha.value())) {
+                    HeaderMatchCondition condition = ha.condition() == null ? HeaderMatchCondition.CONTAINS : ha.condition();
+                    if (!matchesHeaderValue(matchedVal, ha.value(), condition)) {
                         headerPass = false;
-                        headerDiag = "Header '" + ha.name() + "' value mismatch: expected substring '" + ha.value() + "', got '" + matchedVal + "'";
+                        headerDiag = "Header '" + ha.name() + "' value mismatch: expected " + condition.name().toLowerCase(java.util.Locale.ROOT) + " '" + ha.value() + "', got '" + matchedVal + "'";
                         break;
                     }
                 }

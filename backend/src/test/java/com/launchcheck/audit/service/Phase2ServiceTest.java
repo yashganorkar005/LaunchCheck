@@ -3,6 +3,7 @@ package com.launchcheck.audit.service;
 import com.launchcheck.audit.api.ApiSmokeTestResult;
 import com.launchcheck.audit.api.AuditRequest.ApiCheck;
 import com.launchcheck.audit.api.AuditRequest.HeaderAssertion;
+import com.launchcheck.audit.api.AuditRequest.HeaderMatchCondition;
 import com.launchcheck.audit.api.AuditRequest.JsonAssertion;
 import com.launchcheck.audit.api.CorsDiagnosticResult;
 import com.launchcheck.audit.safety.TargetUrl;
@@ -97,6 +98,47 @@ class Phase2ServiceTest {
 
             assertEquals("PASS", result.status());
             assertTrue(result.jsonAssertionPassed());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void headerAssertionsSupportEveryComparisonConditionAndDefaultSafely() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
+        server.createContext("/headers", exchange -> {
+            exchange.getResponseHeaders().set("X-Release", "release/v1.2.3");
+            exchange.sendResponseHeaders(200, -1);
+            exchange.getResponseBody().close();
+        });
+        server.start();
+
+        try {
+            int port = server.getAddress().getPort();
+            UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
+            ApiSmokeTestService service = new ApiSmokeTestService(policy);
+            TargetUrl target = new TargetUrl("http", "headers.example.test", port, "/");
+
+            List<ApiCheck> passingChecks = List.of(
+                    new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("x-release", "lease/v1", HeaderMatchCondition.CONTAINS)), List.of()),
+                    new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("X-Release", "release/v1.2.3", HeaderMatchCondition.EQUALS)), List.of()),
+                    new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("X-RELEASE", "release/", HeaderMatchCondition.STARTS_WITH)), List.of()),
+                    new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("x-release", ".2.3", HeaderMatchCondition.ENDS_WITH)), List.of())
+            );
+            assertEquals(List.of("PASS", "PASS", "PASS", "PASS"), service.runTests(target, passingChecks).stream().map(ApiSmokeTestResult::status).toList());
+
+            List<ApiCheck> failingChecks = List.of(
+                    new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("x-release", "hotfix", HeaderMatchCondition.CONTAINS)), List.of()),
+                    new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("x-release", "release/v1.2", HeaderMatchCondition.EQUALS)), List.of()),
+                    new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("x-release", "hotfix/", HeaderMatchCondition.STARTS_WITH)), List.of()),
+                    new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("x-release", ".9", HeaderMatchCondition.ENDS_WITH)), List.of())
+            );
+            assertEquals(List.of("FAIL", "FAIL", "FAIL", "FAIL"), service.runTests(target, failingChecks).stream().map(ApiSmokeTestResult::status).toList());
+
+            ApiCheck legacyCheck = new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("x-release", "lease/v1")), List.of());
+            assertEquals("PASS", service.runTests(target, List.of(legacyCheck)).get(0).status());
+            ApiCheck nullConditionCheck = new ApiCheck("/headers", "GET", 200, List.of(new HeaderAssertion("x-release", "lease/v1", null)), List.of());
+            assertEquals("PASS", service.runTests(target, List.of(nullConditionCheck)).get(0).status());
         } finally {
             server.stop(0);
         }
