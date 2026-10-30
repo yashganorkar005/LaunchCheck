@@ -86,3 +86,36 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Keep the preview chrome readable without forcing its status into a clipped row. */
+@media (max-width: 639px) {
+  .hero-preview-chrome {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+  }
+
+  .hero-preview-chrome > :first-child,
+  .hero-preview-status {
+    width: 100%;
+  }
+
+  .hero-preview-status {
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+  }
+
+  .hero-preview-status > span {
+    letter-spacing: 0.04em;
+  }
+
+  .hero-tech-line {
+    display: flex;
+    align-items: center;
+    min-height: clamp(2.9rem, 14vw, 3.25rem);
+    padding-block: 0.25rem;
+    box-sizing: border-box;
+  }
+}

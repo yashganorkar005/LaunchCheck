@@ -30,7 +30,6 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  overflow: hidden;
 }
 
 .tech-text-static .tech-text-fallback {
@@ -43,9 +42,9 @@
   white-space: normal;
   color: inherit;
   font-family: var(--font-sans);
-  font-size: clamp(2.15rem, 8.9vw, 2.5rem);
+  font-size: clamp(2rem, 8.9vw, 2.5rem);
   font-weight: 700;
-  line-height: 1.08;
+  line-height: 1.16;
   letter-spacing: -0.045em;
   text-align: center;
 }

@@ -46,7 +46,7 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
 
           {/* Official ReactBits TechText animated headline */}
           <div className="flex flex-col items-center justify-center w-full max-w-4xl mx-auto space-y-1 sm:space-y-2 select-none">
-            <div className="w-full h-[52px] sm:h-[68px] md:h-[84px] lg:h-[98px] relative">
+            <div className="hero-tech-line w-full min-h-[52px] sm:h-[68px] md:h-[84px] lg:h-[98px] relative">
               <TechText
                 text="Make your next deployment"
                 color="#F4F7F4"
@@ -57,7 +57,7 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
                 className="w-full h-full"
               />
             </div>
-            <div className="w-full h-[52px] sm:h-[68px] md:h-[84px] lg:h-[98px] relative">
+            <div className="hero-tech-line w-full min-h-[52px] sm:h-[68px] md:h-[84px] lg:h-[98px] relative">
               <TechText
                 text="a confident one."
                 color="#F4F7F4"
@@ -139,14 +139,14 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
         {/* Live Product Preview Card (Interactive Mock / Telemetry Showcase) */}
         <div className="mt-14 max-w-4xl mx-auto border border-[#25352B] bg-[#0C110E] rounded-[2px] shadow-2xl overflow-hidden relative">
           {/* Top chrome bar */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#1D2A22] bg-[#070A08]">
-            <div className="flex items-center space-x-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FF5A78]/80" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#FFE282]/80" />
-              <span className="w-2.5 h-2.5 rounded-full bg-[#38FF8E]/80" />
-              <span className="ml-2 text-xs font-mono text-[#849188]">launchcheck://preflight-telemetry</span>
+          <div className="hero-preview-chrome flex items-center justify-between px-4 py-3 border-b border-[#1D2A22] bg-[#070A08]">
+            <div className="flex items-center space-x-2 min-w-0">
+              <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-[#FF5A78]/80" />
+              <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-[#FFE282]/80" />
+              <span className="w-2.5 h-2.5 shrink-0 rounded-full bg-[#38FF8E]/80" />
+              <span className="ml-2 text-xs font-mono text-[#849188] truncate">launchcheck://preflight-telemetry</span>
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="hero-preview-status flex items-center space-x-2 shrink-0">
               <span className="text-[10px] font-mono text-[#849188]">SAMPLE PREFLIGHT RUN</span>
               <Badge status="PASS" label="SYSTEM ALL-GREEN" />
             </div>
