@@ -23,17 +23,13 @@ public class ApiSmokeTestService {
     }
 
     public List<ApiSmokeTestResult> runTests(TargetUrl target, List<ApiCheck> checks) {
-        return runTests(target, checks, null);
-    }
-
-    public List<ApiSmokeTestResult> runTests(TargetUrl target, List<ApiCheck> checks, String bearerToken) {
         List<ApiSmokeTestResult> results = new ArrayList<>();
         if (checks == null) return results;
 
         // Enforce max 5 tests
         int limit = Math.min(checks.size(), 5);
         for (int i = 0; i < limit; i++) {
-            results.add(runSingleTest(target, checks.get(i), bearerToken));
+            results.add(runSingleTest(target, checks.get(i)));
         }
         return results;
     }
@@ -44,7 +40,7 @@ public class ApiSmokeTestService {
             case "x-ratelimit-remaining" -> "X-RateLimit-Remaining";
             case "x-ratelimit-reset" -> "X-RateLimit-Reset";
             case "retry-after" -> "Retry-After";
-            case "x-github-request-id" -> "X-GitHub-Request-Id";
+            case "x-request-id" -> "X-Request-Id";
             default -> name;
         };
     }
@@ -58,7 +54,7 @@ public class ApiSmokeTestService {
 
         StringBuilder diagnostic = new StringBuilder("Status mismatch: expected HTTP response ").append(result.httpStatus());
         if (primaryRateLimit) {
-            diagnostic.append(" primary rate limit response; authenticate with a user-supplied token to use authenticated quota");
+            diagnostic.append(" primary rate limit response");
         } else if (secondaryRateLimit) {
             diagnostic.append(" secondary rate limit response");
         } else {
@@ -74,7 +70,7 @@ public class ApiSmokeTestService {
         return diagnostic.toString().trim();
     }
 
-    private ApiSmokeTestResult runSingleTest(TargetUrl target, ApiCheck check, String bearerToken) {
+    private ApiSmokeTestResult runSingleTest(TargetUrl target, ApiCheck check) {
         // Enforce method restriction
         String method = check.method().toUpperCase();
         if (!List.of("GET", "HEAD", "OPTIONS").contains(method)) {
@@ -105,7 +101,7 @@ public class ApiSmokeTestService {
             }
         }
 
-        HttpExchangeResult result = requester.execute(requestTarget, method, headers, bearerToken);
+        HttpExchangeResult result = requester.execute(requestTarget, method, headers);
 
         // If connection failed or httpStatus is 0, treat as transport failure FAIL rather than status mismatch
         if (!"PASS".equals(result.status()) && result.httpStatus() == 0) {

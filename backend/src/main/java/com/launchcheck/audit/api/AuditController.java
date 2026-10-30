@@ -50,8 +50,7 @@ public class AuditController {
                 clientIp,
                 request.frontendUrl(),
                 request.backendUrl(),
-                request.apiChecks(),
-                request.bearerToken()
+                request.apiChecks()
         );
 
         if (userId != null) {
@@ -89,7 +88,7 @@ public class AuditController {
         );
 
         long start = System.currentTimeMillis();
-        var results = smokeTestService.runTests(target, List.of(check), request.bearerToken());
+        var results = smokeTestService.runTests(target, List.of(check));
         long duration = System.currentTimeMillis() - start;
 
         SingleSmokeTestResponse response;

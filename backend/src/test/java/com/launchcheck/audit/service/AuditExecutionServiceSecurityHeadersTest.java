@@ -24,12 +24,12 @@ class AuditExecutionServiceSecurityHeadersTest {
     private static final TargetUrl TARGET = new TargetUrl("https", "example.com", 443, "/");
 
     @Test
-    void mainAuditFlowSendsBearerTokenThroughToGithubSmokeRequest() throws Exception {
+    void mainAuditFlowDoesNotSendAuthorizationToSmokeRequest() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
-        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
-            assertEquals("Bearer ghp-audit-token", exchange.getRequestHeaders().getFirst("Authorization"));
+        server.createContext("/posts/1", exchange -> {
+            assertEquals(null, exchange.getRequestHeaders().getFirst("Authorization"));
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            byte[] body = "{\"full_name\":\"octocat/Spoon-Knife\"}".getBytes();
+            byte[] body = "{\"id\":1}".getBytes();
             exchange.sendResponseHeaders(200, body.length);
             exchange.getResponseBody().write(body);
             exchange.getResponseBody().close();
@@ -41,8 +41,8 @@ class AuditExecutionServiceSecurityHeadersTest {
             UrlSafetyPolicy smokePolicy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
             UrlSafetyPolicy parsePolicy = mock(UrlSafetyPolicy.class);
             PinnedHttpProbe probe = mock(PinnedHttpProbe.class);
-            when(parsePolicy.parseAndValidate("https://github.com")).thenReturn(new TargetUrl("http", "github.com", port, "/"));
-            when(parsePolicy.parseAndValidate("https://api.github.com")).thenReturn(new TargetUrl("http", "api.github.com", port, "/"));
+            when(parsePolicy.parseAndValidate("https://example.com")).thenReturn(new TargetUrl("http", "example.com", port, "/"));
+            when(parsePolicy.parseAndValidate("https://api.example.com")).thenReturn(new TargetUrl("http", "api.example.com", port, "/"));
             when(probe.check(any(TargetUrl.class))).thenReturn(new HttpProbeResult(
                     "PASS", 1, 200, "Responded with HTTP 200",
                     new HttpProbeResult.TlsDetails("SKIPPED", null, "HTTP fixture")
@@ -50,13 +50,12 @@ class AuditExecutionServiceSecurityHeadersTest {
 
             ApiSmokeTestService smokeService = new ApiSmokeTestService(smokePolicy);
             AuditResponse response = new AuditExecutionService(parsePolicy, probe, smokeService).executeAudit(
-                    "https://github.com",
-                    "https://api.github.com",
+                    "https://example.com",
+                    "https://api.example.com",
                     List.of(new AuditRequest.ApiCheck(
-                            "/repos/octocat/Spoon-Knife", "GET", 200, List.of(),
-                            List.of(new AuditRequest.JsonAssertion("/full_name", "octocat/Spoon-Knife"))
-                    )),
-                    "ghp-audit-token"
+                            "/posts/1", "GET", 200, List.of(),
+                            List.of(new AuditRequest.JsonAssertion("/id", "1"))
+                    ))
             );
 
             assertEquals("PASS", response.apiTests().get(0).status());
@@ -70,7 +69,7 @@ class AuditExecutionServiceSecurityHeadersTest {
     @Test
     void mainAuditFlowWithoutTokenRetainsPrimaryRateLimitFailure() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
-        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
+        server.createContext("/posts/1", exchange -> {
             assertEquals(null, exchange.getRequestHeaders().getFirst("Authorization"));
             exchange.getResponseHeaders().set("X-RateLimit-Remaining", "0");
             exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -86,8 +85,8 @@ class AuditExecutionServiceSecurityHeadersTest {
             UrlSafetyPolicy smokePolicy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
             UrlSafetyPolicy parsePolicy = mock(UrlSafetyPolicy.class);
             PinnedHttpProbe probe = mock(PinnedHttpProbe.class);
-            when(parsePolicy.parseAndValidate("https://github.com")).thenReturn(new TargetUrl("http", "github.com", port, "/"));
-            when(parsePolicy.parseAndValidate("https://api.github.com")).thenReturn(new TargetUrl("http", "api.github.com", port, "/"));
+            when(parsePolicy.parseAndValidate("https://example.com")).thenReturn(new TargetUrl("http", "example.com", port, "/"));
+            when(parsePolicy.parseAndValidate("https://api.example.com")).thenReturn(new TargetUrl("http", "api.example.com", port, "/"));
             when(probe.check(any(TargetUrl.class))).thenReturn(new HttpProbeResult(
                     "PASS", 1, 200, "Responded with HTTP 200",
                     new HttpProbeResult.TlsDetails("SKIPPED", null, "HTTP fixture")
@@ -95,11 +94,11 @@ class AuditExecutionServiceSecurityHeadersTest {
 
             ApiSmokeTestService smokeService = new ApiSmokeTestService(smokePolicy);
             AuditResponse response = new AuditExecutionService(parsePolicy, probe, smokeService).executeAudit(
-                    "https://github.com",
-                    "https://api.github.com",
+                    "https://example.com",
+                    "https://api.example.com",
                     List.of(new AuditRequest.ApiCheck(
-                            "/repos/octocat/Spoon-Knife", "GET", 200, List.of(),
-                            List.of(new AuditRequest.JsonAssertion("/full_name", "octocat/Spoon-Knife"))
+                            "/posts/1", "GET", 200, List.of(),
+                            List.of(new AuditRequest.JsonAssertion("/id", "1"))
                     ))
             );
 

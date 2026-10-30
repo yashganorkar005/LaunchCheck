@@ -1076,6 +1076,10 @@ export default function AeroShards({
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
+    const staticMode =
+      window.innerWidth < 768 ||
+      (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false);
+    if (staticMode) return undefined;
     const canvas = document.createElement('canvas');
     canvas.className = CANVAS;
     container.appendChild(canvas);
@@ -2034,7 +2038,8 @@ export default function AeroShards({
           state.shards = createShards(s.count, 1337);
           state.order = [];
         }
-        const moving = !s.paused && !reduced;
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+        const moving = !s.paused && !reduced && !isMobile;
         if (moving) {
           for (let level = 0; level < LEVELS; level += 1) {
             state.travel[level] = (state.travel[level] + (dt * s.speed * 0.09) / paths[level].length) % 1;

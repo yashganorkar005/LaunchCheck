@@ -29,10 +29,6 @@ public class BoundedAuditExecutionService {
     }
 
     public AuditResponse executeBoundedAudit(String clientIp, String frontendUrl, String backendUrl, List<AuditRequest.ApiCheck> apiChecks) {
-        return executeBoundedAudit(clientIp, frontendUrl, backendUrl, apiChecks, null);
-    }
-
-    public AuditResponse executeBoundedAudit(String clientIp, String frontendUrl, String backendUrl, List<AuditRequest.ApiCheck> apiChecks, String bearerToken) {
         checkRateLimit(clientIp != null ? clientIp : "anonymous");
 
         if (!concurrencySemaphore.tryAcquire()) {
@@ -40,10 +36,7 @@ public class BoundedAuditExecutionService {
         }
 
         try {
-            if (bearerToken == null || bearerToken.isBlank()) {
-                return delegate.executeAudit(frontendUrl, backendUrl, apiChecks);
-            }
-            return delegate.executeAudit(frontendUrl, backendUrl, apiChecks, bearerToken);
+            return delegate.executeAudit(frontendUrl, backendUrl, apiChecks);
         } finally {
             concurrencySemaphore.release();
         }

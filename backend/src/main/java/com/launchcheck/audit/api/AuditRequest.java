@@ -6,12 +6,8 @@ import java.util.List;
 public record AuditRequest(
     @NotBlank String frontendUrl,
     @NotBlank String backendUrl,
-    List<ApiCheck> apiChecks,
-    String bearerToken
+    List<ApiCheck> apiChecks
 ) {
-    public AuditRequest(String frontendUrl, String backendUrl, List<ApiCheck> apiChecks) {
-        this(frontendUrl, backendUrl, apiChecks, null);
-    }
     public record ApiCheck(
         String path,
         String method,

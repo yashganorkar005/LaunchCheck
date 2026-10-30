@@ -75,14 +75,12 @@ class Phase2ServiceTest {
     }
 
     @Test
-    void githubSmokeTestSendsRequiredApiHeadersAndPassesAssertions() throws Exception {
+    void smokeTestSendsDefaultHeadersAndPassesAssertions() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
-        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
+        server.createContext("/posts/1", exchange -> {
             assertEquals("LaunchCheck/0.1", exchange.getRequestHeaders().getFirst("User-Agent"));
-            assertEquals("application/vnd.github+json", exchange.getRequestHeaders().getFirst("Accept"));
-            assertEquals("2022-11-28", exchange.getRequestHeaders().getFirst("X-GitHub-Api-Version"));
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            byte[] bytes = "{\"full_name\":\"octocat/Spoon-Knife\"}".getBytes();
+            byte[] bytes = "{\"id\":1,\"title\":\"fixture\"}".getBytes();
             exchange.sendResponseHeaders(200, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.getResponseBody().close();
@@ -93,9 +91,9 @@ class Phase2ServiceTest {
             int port = server.getAddress().getPort();
             UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
             ApiSmokeTestService service = new ApiSmokeTestService(policy);
-            ApiCheck check = new ApiCheck("/repos/octocat/Spoon-Knife", "GET", 200, List.of(), List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife")));
+            ApiCheck check = new ApiCheck("/posts/1", "GET", 200, List.of(), List.of(new JsonAssertion("/id", "1")));
 
-            ApiSmokeTestResult result = service.runTests(new TargetUrl("http", "api.github.com", port, "/"), List.of(check)).get(0);
+            ApiSmokeTestResult result = service.runTests(new TargetUrl("http", "jsonplaceholder.typicode.com", port, "/"), List.of(check)).get(0);
 
             assertEquals("PASS", result.status());
             assertTrue(result.jsonAssertionPassed());
@@ -105,44 +103,12 @@ class Phase2ServiceTest {
     }
 
     @Test
-    void authenticatedGithubSmokeTestSendsOnlyTheConfiguredBearerToken() throws Exception {
+    void smokeTestDoesNotSendAuthorizationHeader() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
-        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
-            assertEquals("Bearer ghp-test-token", exchange.getRequestHeaders().getFirst("Authorization"));
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-            byte[] bytes = "{\"full_name\":\"octocat/Spoon-Knife\"}".getBytes();
-            exchange.sendResponseHeaders(200, bytes.length);
-            exchange.getResponseBody().write(bytes);
-            exchange.getResponseBody().close();
-        });
-        server.start();
-
-        try {
-            int port = server.getAddress().getPort();
-            UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
-            ApiSmokeTestService service = new ApiSmokeTestService(policy);
-            ApiCheck check = new ApiCheck("/repos/octocat/Spoon-Knife", "GET", 200, List.of(), List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife")));
-
-            ApiSmokeTestResult result = service.runTests(
-                    new TargetUrl("http", "api.github.com", port, "/"),
-                    List.of(check),
-                    "ghp-test-token"
-            ).get(0);
-
-            assertEquals("PASS", result.status());
-            assertFalse(result.diagnostic().contains("ghp-test-token"));
-        } finally {
-            server.stop(0);
-        }
-    }
-
-    @Test
-    void tokenlessGithubSmokeTestDoesNotSendAuthorizationHeader() throws Exception {
-        HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
-        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
+        server.createContext("/posts/1", exchange -> {
             assertNull(exchange.getRequestHeaders().getFirst("Authorization"));
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            byte[] bytes = "{\"full_name\":\"octocat/Spoon-Knife\"}".getBytes();
+            byte[] bytes = "{\"id\":1}".getBytes();
             exchange.sendResponseHeaders(200, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.getResponseBody().close();
@@ -153,10 +119,10 @@ class Phase2ServiceTest {
             int port = server.getAddress().getPort();
             UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
             ApiSmokeTestService service = new ApiSmokeTestService(policy);
-            ApiCheck check = new ApiCheck("/repos/octocat/Spoon-Knife", "GET", 200, List.of(), List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife")));
+            ApiCheck check = new ApiCheck("/posts/1", "GET", 200, List.of(), List.of(new JsonAssertion("/id", "1")));
 
             ApiSmokeTestResult result = service.runTests(
-                    new TargetUrl("http", "api.github.com", port, "/"),
+                    new TargetUrl("http", "jsonplaceholder.typicode.com", port, "/"),
                     List.of(check)
             ).get(0);
 
@@ -167,7 +133,7 @@ class Phase2ServiceTest {
     }
 
     @Test
-    void bearerTokenIsNotForwardedToASeparateTargetRequest() throws Exception {
+    void smokeTestDoesNotSendAuthorizationHeaderToAnyTarget() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
         server.createContext("/health", exchange -> {
             assertNull(exchange.getRequestHeaders().getFirst("Authorization"));
@@ -195,7 +161,7 @@ class Phase2ServiceTest {
 
     @Test
     void primaryRateLimit403IncludesSafeDiagnosticsAndSkipsJsonAssertion() throws Exception {
-        ApiSmokeTestResult result = runGithub403Fixture("{\"message\":\"API rate limit exceeded\",\"token\":\"secret-token\"}",
+        ApiSmokeTestResult result = runRateLimit403Fixture("{\"message\":\"API rate limit exceeded\",\"token\":\"secret-token\"}",
                 Map.of("X-RateLimit-Limit", "60", "X-RateLimit-Remaining", "0", "X-RateLimit-Reset", "1700000000"));
 
         assertEquals(403, result.actualStatus());
@@ -209,18 +175,18 @@ class Phase2ServiceTest {
 
     @Test
     void secondaryRateLimit403IncludesRetryDiagnostics() throws Exception {
-        ApiSmokeTestResult result = runGithub403Fixture("{\"message\":\"You have exceeded a secondary rate limit.\"}",
-                Map.of("Retry-After", "30", "X-GitHub-Request-Id", "req-123"));
+        ApiSmokeTestResult result = runRateLimit403Fixture("{\"message\":\"You have exceeded a secondary rate limit.\"}",
+                Map.of("Retry-After", "30", "X-Request-Id", "req-123"));
 
         assertEquals(403, result.actualStatus());
         assertTrue(result.diagnostic().contains("secondary rate limit"));
         assertTrue(result.diagnostic().contains("Retry-After=30"));
-        assertTrue(result.diagnostic().contains("X-GitHub-Request-Id=req-123"));
+        assertTrue(result.diagnostic().contains("X-Request-Id=req-123"));
     }
 
     @Test
     void ordinary403RetainsHttpFailureWithoutRateLimitClassification() throws Exception {
-        ApiSmokeTestResult result = runGithub403Fixture("{\"message\":\"Resource forbidden\"}", Map.of());
+        ApiSmokeTestResult result = runRateLimit403Fixture("{\"message\":\"Resource forbidden\"}", Map.of());
 
         assertEquals(403, result.actualStatus());
         assertTrue(result.diagnostic().contains("HTTP response 403"));
@@ -228,9 +194,9 @@ class Phase2ServiceTest {
         assertTrue(result.jsonAssertionDiagnostic().contains("skipped"));
     }
 
-    private ApiSmokeTestResult runGithub403Fixture(String body, Map<String, String> responseHeaders) throws Exception {
+    private ApiSmokeTestResult runRateLimit403Fixture(String body, Map<String, String> responseHeaders) throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
-        server.createContext("/repos/octocat/Spoon-Knife", exchange -> {
+        server.createContext("/posts/1", exchange -> {
             responseHeaders.forEach((name, value) -> exchange.getResponseHeaders().set(name, value));
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             byte[] bytes = body.getBytes();
@@ -243,8 +209,8 @@ class Phase2ServiceTest {
             int port = server.getAddress().getPort();
             UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
             ApiSmokeTestService service = new ApiSmokeTestService(policy);
-            ApiCheck check = new ApiCheck("/repos/octocat/Spoon-Knife", "GET", 200, List.of(), List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife")));
-            return service.runTests(new TargetUrl("http", "api.github.com", port, "/"), List.of(check)).get(0);
+            ApiCheck check = new ApiCheck("/posts/1", "GET", 200, List.of(), List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife")));
+            return service.runTests(new TargetUrl("http", "jsonplaceholder.typicode.com", port, "/"), List.of(check)).get(0);
         } finally {
             server.stop(0);
         }
@@ -253,9 +219,9 @@ class Phase2ServiceTest {
     @Test
     void apiSmokeTestUsesBackendBasePathWhenCombiningRelativeCheckPath() throws Exception {
         HttpServer server = HttpServer.create(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0);
-        server.createContext("/api/repos/octocat/Spoon-Knife", exchange -> {
+        server.createContext("/api/posts/1", exchange -> {
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            byte[] bytes = "{\"full_name\":\"octocat/Spoon-Knife\"}".getBytes();
+            byte[] bytes = "{\"id\":1}".getBytes();
             exchange.sendResponseHeaders(200, bytes.length);
             exchange.getResponseBody().write(bytes);
             exchange.getResponseBody().close();
@@ -267,15 +233,15 @@ class Phase2ServiceTest {
             UrlSafetyPolicy policy = new UrlSafetyPolicy(addr -> true, host -> List.of(InetAddress.getByName("127.0.0.1")));
             ApiSmokeTestService service = new ApiSmokeTestService(policy);
             TargetUrl backendTarget = new TargetUrl("http", "localhost", port, "/api");
-            ApiCheck githubStyleCheck = new ApiCheck(
-                    "/repos/octocat/Spoon-Knife",
+            ApiCheck sampleCheck = new ApiCheck(
+                    "/posts/1",
                     "GET",
                     200,
                     List.of(),
-                    List.of(new JsonAssertion("/full_name", "octocat/Spoon-Knife"))
+                    List.of(new JsonAssertion("/id", "1"))
             );
 
-            ApiSmokeTestResult result = service.runTests(backendTarget, List.of(githubStyleCheck)).get(0);
+            ApiSmokeTestResult result = service.runTests(backendTarget, List.of(sampleCheck)).get(0);
 
             assertEquals("PASS", result.status());
             assertEquals(200, result.actualStatus());

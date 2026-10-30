@@ -144,7 +144,6 @@ export const api = {
       expectedStatus: number;
       jsonPointer?: string;
       expectedJsonValue?: string;
-      bearerToken?: string;
     }, token?: string | null) =>
       request<SingleSmokeTestResponse>('/api/v1/audits/smoke', {
         method: 'POST',
@@ -153,16 +152,16 @@ export const api = {
   },
 
   audits: {
-    runPublic: (data: { frontendUrl: string; backendUrl: string; apiChecks?: ApiCheck[]; bearerToken?: string }, token?: string | null) =>
+    runPublic: (data: { frontendUrl: string; backendUrl: string; apiChecks?: ApiCheck[] }, token?: string | null) =>
       request<AuditResponse>('/api/v1/audits', {
         method: 'POST',
         body: JSON.stringify(data)
       }, token),
 
-    runForProject: (projectId: string, apiChecks: ApiCheck[] | null | undefined, token: string, bearerToken?: string) =>
+    runForProject: (projectId: string, apiChecks: ApiCheck[] | null | undefined, token: string) =>
       request<AuditResponse>(`/api/v1/projects/${projectId}/audits`, {
         method: 'POST',
-        body: JSON.stringify({ apiChecks: apiChecks && apiChecks.length > 0 ? apiChecks : null, bearerToken })
+        body: JSON.stringify({ apiChecks: apiChecks && apiChecks.length > 0 ? apiChecks : null })
       }, token),
 
     getUserHistory: (token: string, page = 0, size = 20, type?: string) => {

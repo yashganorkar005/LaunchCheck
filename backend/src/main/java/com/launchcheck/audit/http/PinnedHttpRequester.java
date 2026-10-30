@@ -32,7 +32,7 @@ public class PinnedHttpRequester {
     private static final long DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024;
     private static final int MAX_DIAGNOSTIC_BODY_CHARS = 1024;
     private static final List<String> DIAGNOSTIC_HEADERS = List.of(
-            "x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset", "retry-after", "x-github-request-id"
+            "x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset", "retry-after", "x-request-id"
     );
 
     private final UrlSafetyPolicy policy;
@@ -42,10 +42,6 @@ public class PinnedHttpRequester {
     }
 
     public HttpExchangeResult execute(TargetUrl target, String method, List<String> headers) {
-        return execute(target, method, headers, null);
-    }
-
-    public HttpExchangeResult execute(TargetUrl target, String method, List<String> headers, String bearerToken) {
         List<InetAddress> addresses = policy.resolveAndValidate(target);
         if (addresses.isEmpty()) {
             return new HttpExchangeResult("FAIL", 0, 0, "No safe addresses resolved", Map.of(), null, null, Map.of(), null);
@@ -57,7 +53,7 @@ public class PinnedHttpRequester {
         // Try candidate addresses with failover among validated safe addresses
         for (InetAddress candidateAddress : addresses) {
             try {
-                HttpExchangeResult res = executeWithAddress(target, candidateAddress, method, headers, bearerToken, startMs);
+                HttpExchangeResult res = executeWithAddress(target, candidateAddress, method, headers, startMs);
                 if ("PASS".equals(res.status()) || res.httpStatus() > 0) {
                     return res;
                 }
@@ -72,7 +68,7 @@ public class PinnedHttpRequester {
         return new HttpExchangeResult("FAIL", duration, 0, "Connection failed across candidate addresses: " + errMessage, Map.of(), null, null, Map.of(), null);
     }
 
-    private HttpExchangeResult executeWithAddress(TargetUrl target, InetAddress pinnedAddress, String method, List<String> headers, String bearerToken, long startMs) {
+    private HttpExchangeResult executeWithAddress(TargetUrl target, InetAddress pinnedAddress, String method, List<String> headers, long startMs) {
         DnsResolver pinnedResolver = new DnsResolver() {
             @Override
             public InetAddress[] resolve(String host) throws UnknownHostException {
@@ -110,8 +106,7 @@ public class PinnedHttpRequester {
                     }
                 }
             }
-            addDefaultHeaders(request, target);
-            addScopedBearerHeader(request, target, bearerToken);
+            addDefaultHeaders(request);
 
             return client.execute(httpHost, request, response -> {
                 long duration = System.currentTimeMillis() - startMs;
@@ -158,18 +153,8 @@ public class PinnedHttpRequester {
         }
     }
 
-    private static void addDefaultHeaders(HttpUriRequestBase request, TargetUrl target) {
+    private static void addDefaultHeaders(HttpUriRequestBase request) {
         request.setHeader("User-Agent", "LaunchCheck/0.1");
-        if ("api.github.com".equalsIgnoreCase(target.host())) {
-            request.setHeader("Accept", "application/vnd.github+json");
-            request.setHeader("X-GitHub-Api-Version", "2022-11-28");
-        }
-    }
-
-    private static void addScopedBearerHeader(HttpUriRequestBase request, TargetUrl target, String bearerToken) {
-        if (bearerToken != null && !bearerToken.isBlank() && "api.github.com".equalsIgnoreCase(target.host())) {
-            request.setHeader("Authorization", "Bearer " + bearerToken.trim());
-        }
     }
 
     private static String sanitizeDiagnosticValue(String value) {

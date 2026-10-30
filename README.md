@@ -38,7 +38,7 @@ LaunchCheck turns those checks into a repeatable audit response with per-check `
 
 ## Screenshots
 
-These screenshots were captured from the local LaunchCheck application at a consistent 1440×1000 viewport. They show the actual product UI and real diagnostic workflows against the public GitHub and JSONPlaceholder endpoints; no mockups or fabricated results are used.
+These screenshots were captured from the local LaunchCheck application at a consistent 1440×1000 viewport. They show the actual product UI and real diagnostic workflows against the public JSONPlaceholder endpoint; no mockups or fabricated results are used.
 
 ### Product surface
 
@@ -48,7 +48,7 @@ The marketing dashboard presents the deployment preflight workflow, security pos
 
 ![Preflight Audit form](docs/screenshots/preflight-form.png)
 
-The Preflight Audit form is prefilled with the verified GitHub demo targets and a repository smoke test with a JSON Pointer assertion.
+The Preflight Audit form is prefilled with the verified JSONPlaceholder demo targets and a post smoke test with a JSON Pointer assertion.
 
 ![Completed Preflight Audit](docs/screenshots/preflight-results.png)
 
@@ -251,10 +251,10 @@ The Vite development proxy sends relative `/api` requests to the backend. Port `
 
 Open `http://127.0.0.1:5174/`, choose the workspace, and use the prefilled public targets:
 
-- Frontend: `https://github.com`
-- Backend: `https://api.github.com`
-- Smoke test: `GET /repos/octocat/Spoon-Knife`
-- JSON Pointer assertion: `/full_name = octocat/Spoon-Knife`
+- Frontend: `https://jsonplaceholder.typicode.com`
+- Backend: `https://jsonplaceholder.typicode.com`
+- Smoke test: `GET /posts/1`
+- JSON Pointer assertion: `/id = 1`
 
 The public audit endpoint is transient unless an authenticated operator session is active. It does not require a JWT for the basic preflight request.
 
@@ -367,7 +367,7 @@ npm --prefix frontend run build
 
 The backend tests cover authentication, project isolation, SSRF policy, pinned transport, TLS expiry boundaries, CORS configuration, audit history, CI token lifecycle, and CI release decisions. The frontend tests cover the workspace flows, TLS rendering, design-system behavior, audit report exports, credential filtering, PDF pagination, and demo defaults.
 
-The latest verified frontend run in this worktree passed **20 tests across 6 files**, and the production build completed successfully with an existing chunk-size warning. The latest documented backend engineering checkpoint reports **58 tests passing**; run the command above for fresh results in your environment.
+Run the commands above for fresh verification in your environment; build output may report a bundle-size advisory depending on the installed toolchain.
 
 ## Documentation
 

@@ -36,8 +36,8 @@ function LaunchCheckWorkspace() {
   const [currentAuditResult, setCurrentAuditResult] = useState<AuditResponse | null>(null);
 
   // Hero quick-run transient targets
-  const [transientFrontend, setTransientFrontend] = useState('https://github.com');
-  const [transientBackend, setTransientBackend] = useState('https://api.github.com');
+  const [transientFrontend, setTransientFrontend] = useState('https://jsonplaceholder.typicode.com');
+  const [transientBackend, setTransientBackend] = useState('https://jsonplaceholder.typicode.com');
 
   const loadProjects = useCallback(async () => {
     if (!token) return;

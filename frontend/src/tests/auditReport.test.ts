@@ -90,7 +90,7 @@ describe('audit report exports', () => {
         ...audit.targets[0],
         securityHeaders: [{
           ...audit.targets[0].securityHeaders![0],
-          value: 'default-src ' + 'github.githubassets.com '.repeat(80)
+          value: 'default-src ' + 'jsonplaceholder.typicode.com '.repeat(80)
         }]
       }]
     };

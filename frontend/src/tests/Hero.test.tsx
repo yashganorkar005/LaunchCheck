@@ -11,16 +11,20 @@ vi.mock('../components/ui/tech-text/TechText', () => ({
 }));
 
 describe('Hero quick-run defaults', () => {
-  it('starts with the verifiable GitHub targets and passes edited values through', () => {
+  it('starts with JSONPlaceholder targets and passes edited values through', () => {
     const onQuickRun = vi.fn();
 
     render(<Hero onQuickRun={onQuickRun} onExploreArchitecture={() => {}} />);
 
-    expect(screen.getByDisplayValue('https://github.com')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('https://api.github.com')).toBeInTheDocument();
+    expect(screen.getAllByDisplayValue('https://jsonplaceholder.typicode.com')).toHaveLength(2);
+
+    // Select the inputs specifically if needed, but for now, this confirms both exist
+    const inputs = screen.getAllByDisplayValue('https://jsonplaceholder.typicode.com');
+    expect(inputs[0]).toBeInTheDocument();
+    expect(inputs[1]).toBeInTheDocument();
 
     fireEvent.submit(screen.getByRole('button', { name: 'Run a preflight' }).closest('form')!);
 
-    expect(onQuickRun).toHaveBeenCalledWith('https://github.com', 'https://api.github.com');
+    expect(onQuickRun).toHaveBeenCalledWith('https://jsonplaceholder.typicode.com', 'https://jsonplaceholder.typicode.com');
   });
 });

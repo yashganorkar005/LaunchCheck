@@ -17,12 +17,11 @@ interface AuditStudioProps {
 export function AuditStudio({
   selectedProject,
   onAuditComplete,
-  initialFrontend = 'https://github.com',
-  initialBackend = 'https://api.github.com'
+  initialFrontend = 'https://jsonplaceholder.typicode.com',
+  initialBackend = 'https://jsonplaceholder.typicode.com'
 }: AuditStudioProps) {
   const [frontendUrl, setFrontendUrl] = useState(initialFrontend);
   const [backendUrl, setBackendUrl] = useState(initialBackend);
-  const [bearerToken, setBearerToken] = useState('');
 
   React.useEffect(() => {
     if (selectedProject) {
@@ -38,11 +37,11 @@ export function AuditStudio({
     jsonAssertions: { jsonPointer: string; expectedValue: string }[];
   }>>([
     {
-      name: 'Read Public Repository',
-      path: '/repos/octocat/Spoon-Knife',
+      name: 'Read Sample Post',
+      path: '/posts/1',
       expectedStatus: 200,
       headerAssertions: [{ name: 'content-type', value: 'application/json' }],
-      jsonAssertions: [{ jsonPointer: '/full_name', expectedValue: 'octocat/Spoon-Knife' }]
+      jsonAssertions: [{ jsonPointer: '/title', expectedValue: 'sunt aut facere repellat provident occaecati excepturi optio reprehenderit' }]
     }
   ]);
   const [loading, setLoading] = useState(false);
@@ -83,23 +82,11 @@ export function AuditStudio({
 
       let result: AuditResponse;
       const token = localStorage.getItem('lc_token');
-      const targetBearerToken = bearerToken.trim() || undefined;
       if (selectedProject) {
-        result = await api.audits.runForProject(
-          selectedProject.id,
-          apiChecks,
-          token || '',
-          targetBearerToken
-        );
+        result = await api.audits.runForProject(selectedProject.id, apiChecks, token || '');
       } else {
-        result = await api.audits.runPublic({
-          frontendUrl,
-          backendUrl,
-          apiChecks,
-          bearerToken: targetBearerToken
-        }, token);
+        result = await api.audits.runPublic({ frontendUrl, backendUrl, apiChecks }, token);
       }
-      setBearerToken('');
       window.dispatchEvent(new CustomEvent('launchcheck:audit-recorded'));
 
       if (result.overallStatus === 'PASS') {
@@ -112,7 +99,6 @@ export function AuditStudio({
 
       onAuditComplete(result);
     } catch (err: any) {
-      setBearerToken('');
       const message = err instanceof ApiError ? err.message : (err.message || 'Audit execution failed. Please check target connectivity.');
       setError(message);
       toast.error('Audit execution error', message);
@@ -150,20 +136,10 @@ export function AuditStudio({
                 required
                 value={frontendUrl}
                 onChange={(e) => setFrontendUrl(e.target.value)}
-                placeholder="https://github.com"
+                placeholder="https://jsonplaceholder.typicode.com"
                 icon={<Globe className="w-4 h-4" />}
                 monospace
                 hint="Validates URI syntax, HTTP/HTTPS protocols, and standard ports."
-              />
-
-              <Input
-                label="GitHub API Bearer Token (Optional)"
-                type="password"
-                value={bearerToken}
-                onChange={(e) => setBearerToken(e.target.value)}
-                placeholder="Used only for api.github.com"
-                hint="Sent only with this audit request and never saved"
-                monospace
               />
 
               <Input
@@ -199,20 +175,26 @@ export function AuditStudio({
               {smokeTests.map((st, idx) => (
                 <div key={idx} className="p-3 bg-[#070A08] border border-[#1D2A22] rounded-[2px] space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="font-mono text-[11px] text-[#849188]">CHECK #{idx + 1}</span>
+                    <div className="space-y-1">
+                      <span className="block font-mono text-[11px] text-[#849188]">CHECK #{idx + 1}</span>
+                      <span className="block text-sm font-semibold text-[#F4F8F4]">{st.name || 'Unnamed API check'}</span>
+                    </div>
                     {smokeTests.length > 1 && (
                       <button
                         type="button"
                         onClick={() => removeSmokeTest(idx)}
+                        aria-label={`Remove smoke test ${idx + 1}`}
                         className="text-[#FF5A78] hover:text-[#FF5A78]/80 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
-                    <div className="sm:col-span-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label htmlFor={`smoke-name-${idx}`} className="block text-xs font-mono font-medium text-[#C0CAC2]">Check Name</label>
                       <input
+                        id={`smoke-name-${idx}`}
                         aria-label={`Smoke test ${idx + 1} name`}
                         type="text"
                         value={st.name}
@@ -221,12 +203,15 @@ export function AuditStudio({
                           updated[idx].name = e.target.value;
                           setSmokeTests(updated);
                         }}
-                        placeholder="Check Name"
+                        placeholder="Read Sample Post"
                         className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
                       />
+                      <p className="text-[11px] leading-relaxed text-[#849188]">Give this API test a short, descriptive name.</p>
                     </div>
-                    <div className="sm:col-span-5">
+                    <div className="space-y-1.5">
+                      <label htmlFor={`smoke-path-${idx}`} className="block text-xs font-mono font-medium text-[#C0CAC2]">API Request Path</label>
                       <input
+                        id={`smoke-path-${idx}`}
                         aria-label={`Smoke test ${idx + 1} path`}
                         type="text"
                         value={st.path}
@@ -235,12 +220,15 @@ export function AuditStudio({
                           updated[idx].path = e.target.value;
                           setSmokeTests(updated);
                         }}
-                        placeholder="/api/health"
+                        placeholder="/posts/1"
                         className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
                       />
+                      <p className="text-[11px] leading-relaxed text-[#849188]">Enter the endpoint path relative to your Backend API Target URL. Do not include the domain.</p>
                     </div>
-                    <div className="sm:col-span-2">
+                    <div className="space-y-1.5">
+                      <label htmlFor={`smoke-status-${idx}`} className="block text-xs font-mono font-medium text-[#C0CAC2]">Expected HTTP Status Code</label>
                       <input
+                        id={`smoke-status-${idx}`}
                         aria-label={`Smoke test ${idx + 1} expected status`}
                         type="number"
                         value={st.expectedStatus}
@@ -252,61 +240,93 @@ export function AuditStudio({
                         placeholder="200"
                         className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
                       />
+                      <p className="text-[11px] leading-relaxed text-[#849188]">Enter the HTTP status code that indicates a successful response for this test.</p>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <input
-                      aria-label={`Smoke test ${idx + 1} response header`}
-                      type="text"
-                      value={st.headerAssertions[0]?.name || ''}
-                      onChange={(e) => {
-                        const updated = [...smokeTests];
-                        const assertion = updated[idx].headerAssertions[0] || { name: '', value: '' };
-                        updated[idx].headerAssertions = [{ ...assertion, name: e.target.value }];
-                        setSmokeTests(updated);
-                      }}
-                      placeholder="Response header"
-                      className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
-                    />
-                    <input
-                      aria-label={`Smoke test ${idx + 1} response header value`}
-                      type="text"
-                      value={st.headerAssertions[0]?.value || ''}
-                      onChange={(e) => {
-                        const updated = [...smokeTests];
-                        const assertion = updated[idx].headerAssertions[0] || { name: '', value: '' };
-                        updated[idx].headerAssertions = [{ ...assertion, value: e.target.value }];
-                        setSmokeTests(updated);
-                      }}
-                      placeholder="Expected header value"
-                      className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
-                    />
-                    <input
-                      aria-label={`Smoke test ${idx + 1} JSON pointer`}
-                      type="text"
-                      value={st.jsonAssertions[0]?.jsonPointer || ''}
-                      onChange={(e) => {
-                        const updated = [...smokeTests];
-                        const assertion = updated[idx].jsonAssertions[0] || { jsonPointer: '', expectedValue: '' };
-                        updated[idx].jsonAssertions = [{ ...assertion, jsonPointer: e.target.value }];
-                        setSmokeTests(updated);
-                      }}
-                      placeholder="JSON Pointer"
-                      className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
-                    />
-                    <input
-                      aria-label={`Smoke test ${idx + 1} expected JSON value`}
-                      type="text"
-                      value={st.jsonAssertions[0]?.expectedValue || ''}
-                      onChange={(e) => {
-                        const updated = [...smokeTests];
-                        const assertion = updated[idx].jsonAssertions[0] || { jsonPointer: '', expectedValue: '' };
-                        updated[idx].jsonAssertions = [{ ...assertion, expectedValue: e.target.value }];
-                        setSmokeTests(updated);
-                      }}
-                      placeholder="Expected JSON value"
-                      className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
-                    />
+                    <div className="space-y-1.5">
+                      <label htmlFor={`smoke-header-name-${idx}`} className="block text-xs font-mono font-medium text-[#C0CAC2]">Response Header Name</label>
+                      <input
+                        id={`smoke-header-name-${idx}`}
+                        aria-label={`Smoke test ${idx + 1} response header`}
+                        type="text"
+                        value={st.headerAssertions[0]?.name || ''}
+                        onChange={(e) => {
+                          const updated = [...smokeTests];
+                          const assertion = updated[idx].headerAssertions[0] || { name: '', value: '' };
+                          updated[idx].headerAssertions = [{ ...assertion, name: e.target.value }];
+                          setSmokeTests(updated);
+                        }}
+                        placeholder="content-type"
+                        className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
+                      />
+                      <p className="text-[11px] leading-relaxed text-[#849188]">Enter the name of the response header you want LaunchCheck to validate.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor={`smoke-header-condition-${idx}`} className="block text-xs font-mono font-medium text-[#C0CAC2]">Header Match Condition</label>
+                      <select
+                        id={`smoke-header-condition-${idx}`}
+                        aria-label={`Smoke test ${idx + 1} header match condition`}
+                        value="contains"
+                        disabled
+                        className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] opacity-80"
+                      >
+                        <option value="contains">Contains</option>
+                      </select>
+                      <p className="text-[11px] leading-relaxed text-[#849188]">Choose how LaunchCheck should compare the actual response header with your expected value.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor={`smoke-header-value-${idx}`} className="block text-xs font-mono font-medium text-[#C0CAC2]">Expected Response Header Value</label>
+                      <input
+                        id={`smoke-header-value-${idx}`}
+                        aria-label={`Smoke test ${idx + 1} response header value`}
+                        type="text"
+                        value={st.headerAssertions[0]?.value || ''}
+                        onChange={(e) => {
+                          const updated = [...smokeTests];
+                          const assertion = updated[idx].headerAssertions[0] || { name: '', value: '' };
+                          updated[idx].headerAssertions = [{ ...assertion, value: e.target.value }];
+                          setSmokeTests(updated);
+                        }}
+                        placeholder="application/json"
+                        className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
+                      />
+                      <p className="text-[11px] leading-relaxed text-[#849188]">Enter the text that must appear in the selected response header.</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label htmlFor={`smoke-pointer-${idx}`} className="block text-xs font-mono font-medium text-[#C0CAC2]">JSON Response Pointer</label>
+                      <input
+                        id={`smoke-pointer-${idx}`}
+                        aria-label={`Smoke test ${idx + 1} JSON pointer`}
+                        type="text"
+                        value={st.jsonAssertions[0]?.jsonPointer || ''}
+                        onChange={(e) => {
+                          const updated = [...smokeTests];
+                          const assertion = updated[idx].jsonAssertions[0] || { jsonPointer: '', expectedValue: '' };
+                          updated[idx].jsonAssertions = [{ ...assertion, jsonPointer: e.target.value }];
+                          setSmokeTests(updated);
+                        }}
+                        placeholder="/title"
+                        className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
+                      />
+                      <p className="text-[11px] leading-relaxed text-[#849188]">Enter the JSON field path you want to validate. Use JSON Pointer syntax beginning with a forward slash.</p>
+                    </div>
+                    <div className="space-y-1.5 sm:col-span-2">
+                      <label htmlFor={`smoke-expected-json-${idx}`} className="block text-xs font-mono font-medium text-[#C0CAC2]">Expected JSON Value</label>
+                      <input
+                        id={`smoke-expected-json-${idx}`}
+                        aria-label={`Smoke test ${idx + 1} expected JSON value`}
+                        type="text"
+                        value={st.jsonAssertions[0]?.expectedValue || ''}
+                        onChange={(e) => {
+                          const updated = [...smokeTests];
+                          const assertion = updated[idx].jsonAssertions[0] || { jsonPointer: '', expectedValue: '' };
+                          updated[idx].jsonAssertions = [{ ...assertion, expectedValue: e.target.value }];
+                          setSmokeTests(updated);
+                        }}
+                        placeholder="sunt aut facere repellat provident occaecati excepturi optio reprehenderit"
+                        className="w-full bg-[#0C110E] border border-[#25352B] rounded-[2px] px-2.5 py-1.5 text-xs font-mono text-[#F4F8F4] focus:outline-none focus:border-[#38FF8E]"
+                      />
+                      <p className="text-[11px] leading-relaxed text-[#849188]">Enter the exact expected value of the selected JSON field.</p>
+                    </div>
                   </div>
                 </div>
               ))}

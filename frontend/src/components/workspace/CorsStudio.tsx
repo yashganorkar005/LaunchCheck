@@ -7,9 +7,9 @@ import { api, ApiError } from '../../lib/api';
 import { CorsDiagnosticResult } from '../../types';
 
 export function CorsStudio() {
-  const [targetUrl, setTargetUrl] = useState('https://api.github.com');
-  const [origin, setOrigin] = useState('https://github.com');
-  const [endpointPath, setEndpointPath] = useState('/repos/octocat/Spoon-Knife');
+  const [targetUrl, setTargetUrl] = useState('https://jsonplaceholder.typicode.com');
+  const [origin, setOrigin] = useState('https://jsonplaceholder.typicode.com');
+  const [endpointPath, setEndpointPath] = useState('/posts/1');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CorsDiagnosticResult | null>(null);
   const [error, setError] = useState<string | null>(null);

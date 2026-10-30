@@ -68,6 +68,9 @@ const TechText = ({
   const canvasRef = useRef(null);
   const settingsRef = useRef(null);
   const wakeRef = useRef(() => {});
+  const staticMode =
+    typeof window !== 'undefined' &&
+    (window.innerWidth < 768 || (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false));
 
   useEffect(() => {
     settingsRef.current = {
@@ -110,6 +113,10 @@ const TechText = ({
     if (!container || !canvas || !ctx || !scratchCtx) return undefined;
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    if (staticMode) {
+      canvas.style.display = 'none';
+      return undefined;
+    }
     let width = 1;
     let height = 1;
     let dpr = 1;
@@ -867,7 +874,7 @@ const TechText = ({
         (guideAlpha > 0.005 && guideAlpha < 0.995) ||
         Math.abs(presence - (s.reveal === 'area' && active && dragging < 0 ? 1 : 0)) > 0.002 ||
         (frame.alpha > 0.01 && frame.alpha < 0.99);
-      if ((active || settling) && visible && alive) raf = requestAnimationFrame(tick);
+      if (!staticMode && (active || settling) && visible && alive) raf = requestAnimationFrame(tick);
     };
 
     const wake = () => {
@@ -985,7 +992,13 @@ const TechText = ({
   }, []);
 
   return (
-    <div ref={containerRef} className={`tech-text ${className}`.trim()} style={style} role="img" aria-label={text}>
+    <div
+      ref={containerRef}
+      className={`tech-text${staticMode ? ' tech-text-static' : ''} ${className}`.trim()}
+      style={style}
+      role="img"
+      aria-label={text}
+    >
       <span className="tech-text-fallback">{text}</span>
       <canvas ref={canvasRef} className="tech-text-canvas" />
     </div>

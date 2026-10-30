@@ -11,8 +11,8 @@ interface HeroProps {
 }
 
 export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
-  const [frontendUrl, setFrontendUrl] = useState('https://github.com');
-  const [backendUrl, setBackendUrl] = useState('https://api.github.com');
+  const [frontendUrl, setFrontendUrl] = useState('https://jsonplaceholder.typicode.com');
+  const [backendUrl, setBackendUrl] = useState('https://jsonplaceholder.typicode.com');
 
   const handleStart = (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +29,7 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
           accentColor="#65F8FF"
           material="glass"
           placement="full"
-          count={1200}
+          count={typeof window !== 'undefined' && window.innerWidth < 768 ? 400 : 1200}
           className="w-full h-full"
         />
       </div>
@@ -89,7 +89,7 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
                 required
                 value={frontendUrl}
                 onChange={(e) => setFrontendUrl(e.target.value)}
-                placeholder="https://github.com"
+                placeholder="https://jsonplaceholder.typicode.com"
                 className="w-full bg-[#070A08] border border-[#1D2A22] rounded-[2px] pl-9 pr-3 py-2.5 text-xs font-mono text-[#F4F8F4] placeholder-[#4D5750] focus:outline-none focus:border-[#38FF8E]"
               />
             </div>
@@ -103,7 +103,7 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
                 required
                 value={backendUrl}
                 onChange={(e) => setBackendUrl(e.target.value)}
-                placeholder="https://api.github.com"
+                placeholder="https://jsonplaceholder.typicode.com"
                 className="w-full bg-[#070A08] border border-[#1D2A22] rounded-[2px] pl-9 pr-3 py-2.5 text-xs font-mono text-[#F4F8F4] placeholder-[#4D5750] focus:outline-none focus:border-[#38FF8E]"
               />
             </div>
@@ -160,7 +160,7 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
                 <span className="text-[10px] text-[#65F8FF] font-bold">FRONTEND ROUTE</span>
                 <Badge status="PASS" size="sm" />
               </div>
-              <div className="text-sm font-bold text-[#F4F8F4] truncate">github.com</div>
+              <div className="text-sm font-bold text-[#F4F8F4] truncate">jsonplaceholder.typicode.com</div>
               <div className="text-[#849188] text-[11px] space-y-1 pt-1">
                 <div>HTTP Status: <span className="text-[#38FF8E]">200 OK</span></div>
                 <div>Latency: <span className="text-[#F4F8F4]">42 ms</span></div>
@@ -174,7 +174,7 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
                 <span className="text-[10px] text-[#38FF8E] font-bold">BACKEND API</span>
                 <Badge status="PASS" size="sm" />
               </div>
-              <div className="text-sm font-bold text-[#F4F8F4] truncate">api.github.com</div>
+              <div className="text-sm font-bold text-[#F4F8F4] truncate">jsonplaceholder.typicode.com</div>
               <div className="text-[#849188] text-[11px] space-y-1 pt-1">
                 <div>HTTP Status: <span className="text-[#38FF8E]">200 OK</span></div>
                 <div>Latency: <span className="text-[#F4F8F4]">88 ms</span></div>
@@ -188,10 +188,10 @@ export function Hero({ onQuickRun, onExploreArchitecture }: HeroProps) {
                 <span className="text-[10px] text-[#FF65D8] font-bold">API SMOKE TESTS</span>
                 <Badge status="PASS" label="2/2 CHECKS" size="sm" />
               </div>
-              <div className="text-sm font-bold text-[#F4F8F4]">GET /repos/octocat/Spoon-Knife</div>
+              <div className="text-sm font-bold text-[#F4F8F4]">GET /posts/1</div>
               <div className="text-[#849188] text-[11px] space-y-1 pt-1">
                 <div>Header Check: <span className="text-[#38FF8E]">application/json</span></div>
-                <div>JSON /full_name: <span className="text-[#38FF8E]">"octocat/Spoon-Knife"</span></div>
+                <div>JSON /title: <span className="text-[#38FF8E]">"sunt aut facere..."</span></div>
                 <div>Failover: <span className="text-[#65F8FF]">0 retries needed</span></div>
               </div>
             </div>
