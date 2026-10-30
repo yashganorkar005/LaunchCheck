@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/register", "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/audits", "/api/v1/audits/smoke").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/audits/cors").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/health").permitAll()
+                        .requestMatchers(HttpMethod.HEAD, "/api/v1/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/projects/*/ci/audits", "/api/v1/projects/*/ci/audits/**").permitAll()
                         .requestMatchers("/actuator/health", "/actuator/health/**", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .anyRequest().authenticated()
